@@ -27,7 +27,7 @@
         .day-divider { background: linear-gradient(90deg, var(--vw-blue), transparent); padding: 10px 15px; margin: 25px 0 10px 0; border-left: 4px solid var(--vw-light); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
         .day-divider h2 { margin: 0; font-size: 14px; text-transform: uppercase; font-weight: 800; }
 
-        .car-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 15px; margin-bottom: 20px; overflow: hidden; }
+        .car-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 15px; margin-bottom: 20px; overflow: hidden; transition: all 0.3s ease; }
         .card-header { padding: 12px 15px; background: rgba(255,255,255,0.03); display: flex; justify-content: space-between; align-items: center; }
         .delivery-hour { font-size: 24px; font-weight: 800; color: var(--vw-light); }
         .status-badge { font-size: 9px; padding: 4px 8px; border-radius: 5px; font-weight: bold; }
@@ -43,7 +43,14 @@
         .tag-blue { background: rgba(0, 176, 240, 0.1); color: var(--vw-light); border-color: var(--vw-light); cursor: pointer; }
 
         .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; background: rgba(0,0,0,0.2); }
-        .btn-act { padding: 12px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn-act { padding: 12px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; border: none; font-family: inherit; }
+        .btn-full { grid-column: span 2; }
+        
+        /* ESTILOS PARA COCHES ENTREGADOS */
+        .entregado-card { opacity: 0.5; filter: grayscale(80%); border-color: var(--success); }
+        .entregado-card .card-header { background: rgba(37, 211, 102, 0.1); }
+        .btn-entregado { background: var(--success) !important; color: white; }
+        .btn-deshacer { background: #333 !important; color: #aaa; }
 
         /* MAPA */
         .map-wrapper { overflow-x: auto; padding: 10px; background: #050a15; border-radius: 12px; border: 1px solid var(--glass-border); position: relative; }
@@ -81,6 +88,8 @@
             <h1 id="user-title" style="font-size:18px; margin:0;">ENTREGAS</h1>
             <i class="fas fa-sync-alt" onclick="sincronizarTodo()" style="padding:10px; cursor:pointer; color:var(--vw-light);"></i>
         </div>
+        <input type="text" id="busc-agenda" placeholder="Buscar cliente, modelo, matrícula..." onkeyup="filtrarAgenda()" style="width:100%; padding:12px; border-radius:10px; background:var(--glass); border:1px solid var(--glass-border); color:white; margin-bottom:15px;">
+        
         <div id="contenedor-agenda"></div>
     </section>
 
@@ -99,13 +108,15 @@
     </section>
 
     <script>
-        // PEGA AQUÍ TUS 2 URLs
+        // URLs CORRECTAS
         const API_AGENDA = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         const API_GARAJE = "https://script.google.com/macros/s/AKfycbwb_92nWXbKGNew3vlaj8lWHk2rn65njl_6Z5T2BorpcfyGpWwwmSO1SH6DSyYbBm8bLw/exec";
         
         let agente = "";
         let parkingData = {}; 
         let pendingVIN = null;
+        // NUEVO: Array para guardar localmente qué coches hemos entregado
+        let cochesEntregados = JSON.parse(localStorage.getItem('entregados_vw')) || [];
 
         function iniciar(n) {
             agente = n;
@@ -147,7 +158,6 @@
         }
 
         async function actualizarPlazaNube(idPlaza, vin) {
-            // 1. Efecto inmediato en pantalla
             if(vin) {
                 parkingData[idPlaza] = { vin: vin };
             } else {
@@ -156,14 +166,12 @@
             renderMap();
             cargarAgenda();
 
-            // 2. Enviar a la nube (Excel)
             try {
                 const urlSegura = API_GARAJE + "?action=setParking&plaza=" + idPlaza + "&vin=" + encodeURIComponent(vin) + "&t=" + Date.now();
                 const respuesta = await fetch(urlSegura, { method: 'GET', mode: 'cors' });
                 if (!respuesta.ok) throw new Error("Rechazado por el servidor");
             } catch (e) {
                 console.error(e);
-                alert("Aviso: El coche se ha cambiado en tu pantalla, pero hubo un error al subirlo a la nube. Verifica tu conexión.");
             }
         }
 
@@ -180,7 +188,49 @@
             document.getElementById('auto-assign-bar').style.display = 'none';
         }
 
-        // --- AGENDA ---
+        // --- NUEVO: FUNCIONES DE LA AGENDA ---
+        function filtrarAgenda() {
+            const busqueda = document.getElementById('busc-agenda').value.toUpperCase();
+            const tarjetas = document.querySelectorAll('.car-card');
+            
+            tarjetas.forEach(tarjeta => {
+                const texto = tarjeta.innerText.toUpperCase();
+                if (texto.includes(busqueda)) {
+                    tarjeta.style.display = 'block';
+                } else {
+                    tarjeta.style.display = 'none';
+                }
+            });
+        }
+
+        function toggleEntregado(vin) {
+            if (!vin || vin === 'NO DISPONIBLE') return;
+            
+            const index = cochesEntregados.indexOf(vin);
+            if (index === -1) {
+                // MARCAR COMO ENTREGADO
+                if(confirm("¿Marcar este coche como ENTREGADO?\nSu plaza del garaje se quedará libre para los compañeros.")) {
+                    cochesEntregados.push(vin);
+                    localStorage.setItem('entregados_vw', JSON.stringify(cochesEntregados));
+                    
+                    // Buscar si tiene plaza y liberarla automáticamente
+                    let plazaAsignada = null;
+                    for(let id in parkingData) { if(parkingData[id].vin === vin) plazaAsignada = id; }
+                    
+                    if (plazaAsignada) {
+                        actualizarPlazaNube(plazaAsignada, ""); // Esto lo borra y recarga la vista
+                    } else {
+                        cargarAgenda();
+                    }
+                }
+            } else {
+                // DESHACER (Desmarcar)
+                cochesEntregados.splice(index, 1);
+                localStorage.setItem('entregados_vw', JSON.stringify(cochesEntregados));
+                cargarAgenda();
+            }
+        }
+
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
             if(lista.innerHTML === "") lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando entregas de ' + agente + '...</p>';
@@ -221,14 +271,17 @@
                         const pedido = String(c.pedido || '').toUpperCase().trim();
                         const vo = String(c.entregaVO || '').toUpperCase().trim();
                         const tel = String(c.telefono || '').replace(/\s/g, '');
-                        // AÑADIDO RENTING: Comprueba si existe el dato
                         const renting = c.renting ? String(c.renting).toUpperCase().trim() : ''; 
                         
                         let plazaAsignada = null;
                         for(let id in parkingData) { if(parkingData[id].vin === vin) plazaAsignada = id; }
 
+                        // Comprobar si está entregado
+                        const isEntregado = cochesEntregados.includes(vin);
+                        const claseEntregado = isEntregado ? 'entregado-card' : '';
+
                         lista.innerHTML += `
-                            <div class="car-card">
+                            <div class="car-card ${claseEntregado}">
                                 <div class="card-header">
                                     <span class="delivery-hour">${horaStr}</span>
                                     <span class="status-badge ${pedido === 'SÍ' ? 'pedido-si' : 'pedido-no'}">${pedido === 'SÍ' ? 'PEDIDO' : 'NO PEDIDO'}</span>
@@ -255,10 +308,18 @@
                                 <div class="actions">
                                     <a href="tel:${tel}" class="btn-act" style="background:var(--vw-blue); border:1px solid var(--vw-light)"><i class="fas fa-phone"></i> LLAMAR</a>
                                     <a href="https://wa.me/34${tel}" class="btn-act" style="background:#25D366"><i class="fab fa-whatsapp"></i> WHATSAPP</a>
+                                    <button onclick="toggleEntregado('${vin}')" class="btn-act btn-full ${isEntregado ? 'btn-deshacer' : 'btn-entregado'}">
+                                        <i class="fas ${isEntregado ? 'fa-undo' : 'fa-check-circle'}"></i> 
+                                        ${isEntregado ? 'DESHACER ENTREGA' : '✔ MARCAR COMO ENTREGADO'}
+                                    </button>
                                 </div>
                             </div>`;
                     });
                 }
+                
+                // Ejecutamos el filtro por si tenías algo escrito en el buscador al recargar
+                filtrarAgenda();
+                
             } catch (e) {
                 lista.innerHTML = `<p style="color:red; text-align:center; padding:20px;">Error interno: ${e.message}</p>`;
             }
@@ -298,7 +359,6 @@
                 const vinMostrado = data ? data.vin : '';
                 div.innerHTML = `<span class="spot-num">${c.id}</span><div class="spot-vin-text">${vinMostrado}</div>`;
                 
-                // LA MAGIA DEL RADAR PARA MOVER COCHES
                 div.onclick = () => {
                     const checkAndMove = (nuevoVin) => {
                         let plazaAntigua = null;
@@ -311,8 +371,8 @@
                                 alert("El coche ya está en esta misma plaza.");
                             } else {
                                 if(confirm(`⚠️ El bastidor ${nuevoVin} ya está aparcado en la PLAZA ${plazaAntigua}.\n\n¿Quieres moverlo a la PLAZA ${c.id}?`)) {
-                                    actualizarPlazaNube(plazaAntigua, ""); // Libera la vieja
-                                    setTimeout(() => actualizarPlazaNube(c.id, nuevoVin), 400); // Ocupa la nueva
+                                    actualizarPlazaNube(plazaAntigua, ""); 
+                                    setTimeout(() => actualizarPlazaNube(c.id, nuevoVin), 400); 
                                 }
                             }
                         } else {
