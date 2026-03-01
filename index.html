@@ -87,6 +87,7 @@
     </section>
 
     <script>
+        // *** VERIFICA ESTA URL CON LA QUE TIENES EN GOOGLE SCRIPTS ***
         const API_URL = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         
         let agente = "";
@@ -94,7 +95,7 @@
         let pendingVIN = null;
 
         function iniciar(n) {
-            agente = n;
+            agente = n.trim().toUpperCase(); // Limpia espacios y pasa a mayúsculas
             document.getElementById('s-login').classList.remove('active');
             document.getElementById('s-agenda').classList.add('active');
             document.getElementById('main-nav').style.display = 'flex';
@@ -125,15 +126,15 @@
 
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
-            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando entregas de ' + agente + '...</p>';
+            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Sincronizando ' + agente + '...</p>';
             
             try {
-                // He añadido trim() para evitar espacios accidentales en el nombre
-                const r = await fetch(`${API_URL}?action=getAgenda&agente=${agente.trim()}`);
+                // Forzamos el nombre a mayúsculas y quitamos espacios en la URL
+                const r = await fetch(`${API_URL}?action=getAgenda&agente=${encodeURIComponent(agente)}`);
                 const datos = await r.json();
                 
                 if (!datos || datos.length === 0) {
-                    lista.innerHTML = '<p style="text-align:center; padding:40px;">No hay entregas para ' + agente + '</p>';
+                    lista.innerHTML = '<p style="text-align:center; padding:40px;">No hay datos para ' + agente + ' en el Excel.</p>';
                     return;
                 }
 
@@ -186,7 +187,7 @@
                     });
                 }
             } catch (e) {
-                lista.innerHTML = '<p style="color:red; text-align:center; padding:20px;">Error de conexión para ' + agente + '.<br>Verifica la URL del script.</p>';
+                lista.innerHTML = '<p style="color:red; text-align:center; padding:20px;">Error de conexión.<br>Verifica la URL del script o que Manuel tenga datos hoy.</p>';
             }
         }
 
