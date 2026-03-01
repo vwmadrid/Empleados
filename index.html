@@ -42,11 +42,15 @@
         .data-tag { flex: 1; padding: 8px; border-radius: 8px; font-size: 10px; text-align: center; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
         .tag-blue { background: rgba(0, 176, 240, 0.1); color: var(--vw-light); border-color: var(--vw-light); cursor: pointer; }
 
+        /* NUEVO: ESTILO PARA LA CAJA DE NOTAS */
+        .nota-box { margin-top: 12px; background: rgba(0,0,0,0.4); border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px; padding: 10px; }
+        .nota-header { display: flex; justify-content: space-between; font-size: 9px; opacity: 0.8; margin-bottom: 5px; font-weight: bold; }
+        .nota-content { font-size: 11px; color: #eee; white-space: pre-wrap; min-height: 15px; }
+
         .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; background: rgba(0,0,0,0.2); }
         .btn-act { padding: 12px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; border: none; font-family: inherit; }
         .btn-full { grid-column: span 2; }
         
-        /* ESTILOS PARA COCHES ENTREGADOS */
         .entregado-card { opacity: 0.5; filter: grayscale(80%); border-color: var(--success); }
         .entregado-card .card-header { background: rgba(37, 211, 102, 0.1); }
         .btn-entregado { background: var(--success) !important; color: white; }
@@ -89,33 +93,32 @@
             <i class="fas fa-sync-alt" onclick="sincronizarTodo()" style="padding:10px; cursor:pointer; color:var(--vw-light);"></i>
         </div>
         <input type="text" id="busc-agenda" placeholder="Buscar cliente, modelo, matrícula..." onkeyup="filtrarAgenda()" style="width:100%; padding:12px; border-radius:10px; background:var(--glass); border:1px solid var(--glass-border); color:white; margin-bottom:15px;">
-        
         <div id="contenedor-agenda"></div>
     </section>
 
     <section id="s-mapa" class="screen">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <h2 style="font-size:18px; margin:0;">Plano del Garaje</h2>
-            <i class="fas fa-cloud-download-alt" onclick="cargarGarajeNube()" style="padding:10px; cursor:pointer; color:var(--vw-light); font-size:18px;"></i>
+            <i class="fas fa-cloud-download-alt" onclick="sincronizarTodo()" style="padding:10px; cursor:pointer; color:var(--vw-light); font-size:18px;"></i>
         </div>
         <input type="text" id="busc-map" placeholder="Buscar bastidor en mapa..." onkeyup="buscarEnMapa()" style="width:100%; padding:12px; border-radius:10px; background:var(--glass); border:1px solid var(--glass-border); color:white; margin-bottom:15px;">
         <div class="map-wrapper">
             <div id="loading-map" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; font-weight:bold; color:var(--vw-light); display:none; z-index: 10;">
-                <i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Conectando...
+                <i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Sincronizando...
             </div>
             <div class="map-grid" id="parking-grid"></div>
         </div>
     </section>
 
     <script>
-        // URLs CORRECTAS
+        // PEGA AQUÍ TUS DOS URLs
         const API_AGENDA = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         const API_GARAJE = "https://script.google.com/macros/s/AKfycbwb_92nWXbKGNew3vlaj8lWHk2rn65njl_6Z5T2BorpcfyGpWwwmSO1SH6DSyYbBm8bLw/exec";
         
         let agente = "";
         let parkingData = {}; 
+        let notasData = {}; // ¡NUEVO! Aquí guardamos las notas
         let pendingVIN = null;
-        // NUEVO: Array para guardar localmente qué coches hemos entregado
         let cochesEntregados = JSON.parse(localStorage.getItem('entregados_vw')) || [];
 
         function iniciar(n) {
@@ -137,41 +140,55 @@
             window.scrollTo(0,0);
         }
 
-        function sincronizarTodo() {
-            cargarGarajeNube();
-            cargarAgenda();
-        }
-
-        // --- GARAJE EN LA NUBE ---
-        async function cargarGarajeNube() {
+        // --- GARAJE Y NOTAS EN LA NUBE ---
+        async function sincronizarTodo() {
             document.getElementById('loading-map').style.display = 'block';
             try {
-                const url = API_GARAJE + "?action=getParking&t=" + Date.now();
-                const response = await fetch(url);
-                parkingData = await response.json();
+                // Hacemos 3 cosas a la vez: Bajar el garaje, bajar las notas, y bajar tu agenda
+                const [resGaraje, resNotas] = await Promise.all([
+                    fetch(API_GARAJE + "?action=getParking&t=" + Date.now()),
+                    fetch(API_GARAJE + "?action=getNotas&t=" + Date.now())
+                ]);
+                parkingData = await resGaraje.json();
+                notasData = await resNotas.json();
+                
                 renderMap();
                 cargarAgenda(); 
             } catch (e) {
-                console.error("Error cargando garaje nube:", e);
+                console.error("Error sincronizando:", e);
             }
             document.getElementById('loading-map').style.display = 'none';
         }
 
         async function actualizarPlazaNube(idPlaza, vin) {
-            if(vin) {
-                parkingData[idPlaza] = { vin: vin };
-            } else {
-                delete parkingData[idPlaza];
-            }
+            if(vin) parkingData[idPlaza] = { vin: vin };
+            else delete parkingData[idPlaza];
+            
             renderMap();
             cargarAgenda();
 
             try {
                 const urlSegura = API_GARAJE + "?action=setParking&plaza=" + idPlaza + "&vin=" + encodeURIComponent(vin) + "&t=" + Date.now();
-                const respuesta = await fetch(urlSegura, { method: 'GET', mode: 'cors' });
-                if (!respuesta.ok) throw new Error("Rechazado por el servidor");
-            } catch (e) {
-                console.error(e);
+                fetch(urlSegura, { method: 'GET', mode: 'cors' });
+            } catch (e) {}
+        }
+
+        // ¡NUEVO! GUARDAR NOTAS COMPARTIDAS
+        async function editarNota(vin) {
+            if(!vin || vin === 'NO DISPONIBLE') return;
+            const notaActual = notasData[vin] || "";
+            const nuevaNota = prompt("Escribe una nota para el bastidor " + vin + " (la verán tus compañeros):", notaActual);
+
+            if (nuevaNota !== null) { // Si no le dio a cancelar
+                notasData[vin] = nuevaNota;
+                cargarAgenda(); // Repintamos la tarjeta para que se vea
+                
+                try {
+                    const urlSegura = API_GARAJE + "?action=setNota&vin=" + encodeURIComponent(vin) + "&nota=" + encodeURIComponent(nuevaNota) + "&t=" + Date.now();
+                    fetch(urlSegura, { method: 'GET', mode: 'cors' });
+                } catch (e) {
+                    alert("Error subiendo la nota a la nube.");
+                }
             }
         }
 
@@ -188,49 +205,35 @@
             document.getElementById('auto-assign-bar').style.display = 'none';
         }
 
-        // --- NUEVO: FUNCIONES DE LA AGENDA ---
         function filtrarAgenda() {
             const busqueda = document.getElementById('busc-agenda').value.toUpperCase();
-            const tarjetas = document.querySelectorAll('.car-card');
-            
-            tarjetas.forEach(tarjeta => {
+            document.querySelectorAll('.car-card').forEach(tarjeta => {
                 const texto = tarjeta.innerText.toUpperCase();
-                if (texto.includes(busqueda)) {
-                    tarjeta.style.display = 'block';
-                } else {
-                    tarjeta.style.display = 'none';
-                }
+                tarjeta.style.display = texto.includes(busqueda) ? 'block' : 'none';
             });
         }
 
         function toggleEntregado(vin) {
             if (!vin || vin === 'NO DISPONIBLE') return;
-            
             const index = cochesEntregados.indexOf(vin);
             if (index === -1) {
-                // MARCAR COMO ENTREGADO
-                if(confirm("¿Marcar este coche como ENTREGADO?\nSu plaza del garaje se quedará libre para los compañeros.")) {
+                if(confirm("¿Marcar coche como ENTREGADO?\nSu plaza del garaje se liberará automáticamente.")) {
                     cochesEntregados.push(vin);
                     localStorage.setItem('entregados_vw', JSON.stringify(cochesEntregados));
                     
-                    // Buscar si tiene plaza y liberarla automáticamente
                     let plazaAsignada = null;
                     for(let id in parkingData) { if(parkingData[id].vin === vin) plazaAsignada = id; }
-                    
-                    if (plazaAsignada) {
-                        actualizarPlazaNube(plazaAsignada, ""); // Esto lo borra y recarga la vista
-                    } else {
-                        cargarAgenda();
-                    }
+                    if (plazaAsignada) actualizarPlazaNube(plazaAsignada, ""); 
+                    else cargarAgenda();
                 }
             } else {
-                // DESHACER (Desmarcar)
                 cochesEntregados.splice(index, 1);
                 localStorage.setItem('entregados_vw', JSON.stringify(cochesEntregados));
                 cargarAgenda();
             }
         }
 
+        // --- AGENDA ---
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
             if(lista.innerHTML === "") lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando entregas de ' + agente + '...</p>';
@@ -275,10 +278,12 @@
                         
                         let plazaAsignada = null;
                         for(let id in parkingData) { if(parkingData[id].vin === vin) plazaAsignada = id; }
-
-                        // Comprobar si está entregado
+                        
                         const isEntregado = cochesEntregados.includes(vin);
                         const claseEntregado = isEntregado ? 'entregado-card' : '';
+                        
+                        // Miramos si este coche tiene alguna nota guardada
+                        const notaDelCoche = notasData[vin] ? notasData[vin] : '<i style="opacity:0.4">Añadir observaciones...</i>';
 
                         lista.innerHTML += `
                             <div class="car-card ${claseEntregado}">
@@ -304,6 +309,15 @@
                                             <i class="fas fa-map-marker-alt"></i> ${plazaAsignada ? 'PLAZA ' + plazaAsignada : 'ASIGNAR PLAZA'}
                                         </div>
                                     </div>
+                                    
+                                    <div class="nota-box">
+                                        <div class="nota-header">
+                                            <span>📝 NOTA COMPARTIDA</span>
+                                            <span onclick="editarNota('${vin}')" style="color:var(--vw-light); cursor:pointer;"><i class="fas fa-edit"></i> EDITAR</span>
+                                        </div>
+                                        <div class="nota-content">${notaDelCoche}</div>
+                                    </div>
+
                                 </div>
                                 <div class="actions">
                                     <a href="tel:${tel}" class="btn-act" style="background:var(--vw-blue); border:1px solid var(--vw-light)"><i class="fas fa-phone"></i> LLAMAR</a>
@@ -316,10 +330,7 @@
                             </div>`;
                     });
                 }
-                
-                // Ejecutamos el filtro por si tenías algo escrito en el buscador al recargar
                 filtrarAgenda();
-                
             } catch (e) {
                 lista.innerHTML = `<p style="color:red; text-align:center; padding:20px;">Error interno: ${e.message}</p>`;
             }
