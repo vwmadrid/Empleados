@@ -99,7 +99,7 @@
     </section>
 
     <script>
-        // PEGA AQUÍ TUS DOS URLs
+        // TUS DOS URLs CONECTADAS
         const API_AGENDA = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         const API_GARAJE = "https://script.google.com/macros/s/AKfycbwb_92nWXbKGNew3vlaj8lWHk2rn65njl_6Z5T2BorpcfyGpWwwmSO1SH6DSyYbBm8bLw/exec";
         
@@ -114,9 +114,7 @@
             document.getElementById('main-nav').style.display = 'flex';
             document.getElementById('user-title').innerText = "ENTREGAS: " + agente;
             
-            // DIBUJAMOS EL MAPA AL INSTANTE (Para que no desaparezca nunca)
             renderMap();
-            // LUEGO PEDIMOS LOS DATOS
             sincronizarTodo();
         }
 
@@ -137,10 +135,12 @@
         async function cargarGarajeNube() {
             document.getElementById('loading-map').style.display = 'block';
             try {
-                const response = await fetch(API_GARAJE + "?action=getParking");
+                // Añadimos un timestamp para que no cargue datos viejos cacheados
+                const url = API_GARAJE + "?action=getParking&t=" + Date.now();
+                const response = await fetch(url);
                 parkingData = await response.json();
                 renderMap();
-                cargarAgenda(); // Repinta la agenda para actualizar los botones azules
+                cargarAgenda(); 
             } catch (e) {
                 console.error("Error cargando garaje nube:", e);
             }
@@ -148,7 +148,7 @@
         }
 
         async function actualizarPlazaNube(idPlaza, vin) {
-            // Actualización visual inmediata para el usuario
+            // 1. Efecto inmediato en pantalla
             if(vin) {
                 parkingData[idPlaza] = { vin: vin };
             } else {
@@ -157,11 +157,14 @@
             renderMap();
             cargarAgenda();
 
-            // Guardamos en la nube en segundo plano
+            // 2. Enviar a la nube (Excel)
             try {
-                await fetch(API_GARAJE + "?action=setParking&plaza=" + idPlaza + "&vin=" + vin);
+                const urlSegura = API_GARAJE + "?action=setParking&plaza=" + idPlaza + "&vin=" + encodeURIComponent(vin) + "&t=" + Date.now();
+                const respuesta = await fetch(urlSegura, { method: 'GET', mode: 'cors' });
+                if (!respuesta.ok) throw new Error("Rechazado por el servidor");
             } catch (e) {
-                alert("Aviso: Fallo de red. El coche no se ha guardado en la nube para tus compañeros.");
+                console.error(e);
+                alert("Aviso: El coche se ha cambiado en tu pantalla, pero hubo un error al subirlo a la nube. Verifica tu conexión.");
             }
         }
 
@@ -178,7 +181,7 @@
             document.getElementById('auto-assign-bar').style.display = 'none';
         }
 
-        // --- AGENDA ORIGINAL ---
+        // --- AGENDA ---
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
             if(lista.innerHTML === "") lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando entregas de ' + agente + '...</p>';
@@ -258,7 +261,7 @@
             }
         }
 
-        // --- DIBUJO DEL GARAJE ---
+        // --- MAPA ---
         const mapConfig = [
             ...Array.from({length: 20}, (_, i) => ({ id: (12 + i).toString(), col: '1 / 6', row: `${i + 1} / ${i + 2}` })),
             { id: '11', col: '10 / 16', row: '1 / 2' }, { id: '9', col: '10 / 16', row: '2 / 3' },
@@ -292,15 +295,36 @@
                 const vinMostrado = data ? data.vin : '';
                 div.innerHTML = `<span class="spot-num">${c.id}</span><div class="spot-vin-text">${vinMostrado}</div>`;
                 
+                // LA MAGIA DEL RADAR PARA MOVER COCHES
                 div.onclick = () => {
+                    const checkAndMove = (nuevoVin) => {
+                        let plazaAntigua = null;
+                        for(let id in parkingData) {
+                            if(parkingData[id].vin === nuevoVin) plazaAntigua = id;
+                        }
+
+                        if(plazaAntigua) {
+                            if(plazaAntigua === c.id) {
+                                alert("El coche ya está en esta misma plaza.");
+                            } else {
+                                if(confirm(`⚠️ El bastidor ${nuevoVin} ya está aparcado en la PLAZA ${plazaAntigua}.\n\n¿Quieres moverlo a la PLAZA ${c.id}?`)) {
+                                    actualizarPlazaNube(plazaAntigua, ""); // Libera la vieja
+                                    setTimeout(() => actualizarPlazaNube(c.id, nuevoVin), 400); // Ocupa la nueva
+                                }
+                            }
+                        } else {
+                            actualizarPlazaNube(c.id, nuevoVin);
+                        }
+                    };
+
                     if(pendingVIN) {
-                        actualizarPlazaNube(c.id, pendingVIN);
+                        checkAndMove(pendingVIN);
                         cancelAssign();
                     } else if(data) {
-                        if(confirm("Liberar plaza " + c.id + "\nBastidor: " + data.vin)) actualizarPlazaNube(c.id, "");
+                        if(confirm("¿Liberar plaza " + c.id + "?\nBastidor: " + data.vin)) actualizarPlazaNube(c.id, "");
                     } else {
                         const v = prompt("Aparcar - Introduce Bastidor:");
-                        if(v) actualizarPlazaNube(c.id, String(v).toUpperCase().trim());
+                        if(v) checkAndMove(String(v).toUpperCase().trim());
                     }
                 };
                 grid.appendChild(div);
