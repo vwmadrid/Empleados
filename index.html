@@ -25,7 +25,7 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
         .day-divider { background: linear-gradient(90deg, var(--vw-blue), transparent); padding: 10px 15px; margin: 25px 0 10px 0; border-left: 4px solid var(--vw-light); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
-        .day-divider h2 { margin: 0; font-size: 15px; text-transform: uppercase; }
+        .day-divider h2 { margin: 0; font-size: 14px; text-transform: uppercase; font-weight: 800; }
 
         .car-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 15px; margin-bottom: 20px; overflow: hidden; }
         .card-header { padding: 12px 15px; background: rgba(255,255,255,0.03); display: flex; justify-content: space-between; align-items: center; }
@@ -77,6 +77,10 @@
     </section>
 
     <section id="s-agenda" class="screen">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h1 id="user-title" style="font-size:18px; margin:0;">MIS ENTREGAS</h1>
+            <i class="fas fa-sync-alt" onclick="cargarAgenda()" style="padding:10px; cursor:pointer;"></i>
+        </div>
         <div id="contenedor-agenda"></div>
     </section>
 
@@ -89,6 +93,7 @@
     </section>
 
     <script>
+        // PEGA TU URL AQUÍ
         const API_URL = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         
         let agente = "";
@@ -96,7 +101,7 @@
         let pendingVIN = null;
 
         function iniciar(n) {
-            agente = n;
+            agente = n.trim().toUpperCase(); // Limpiamos espacios y forzamos mayúsculas
             document.getElementById('s-login').classList.remove('active');
             document.getElementById('s-agenda').classList.add('active');
             document.getElementById('main-nav').style.display = 'flex';
@@ -111,36 +116,23 @@
             document.getElementById('nav-' + id.split('-')[1]).classList.add('active');
         }
 
-        function startAutoAssign(vin) {
-            if(!vin || vin === 'NO DISPONIBLE') return;
-            pendingVIN = vin.toUpperCase().trim();
-            document.getElementById('target-vin').innerText = pendingVIN;
-            document.getElementById('auto-assign-bar').style.display = 'block';
-            switchTab('s-mapa');
-        }
-
-        function cancelAssign() {
-            pendingVIN = null;
-            document.getElementById('auto-assign-bar').style.display = 'none';
-        }
-
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
-            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando...</p>';
+            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Sincronizando ' + agente + '...</p>';
             
             try {
-                const r = await fetch(`${API_URL}?action=getAgenda&agente=${agente}`);
+                // EL CAMBIO ESTÁ AQUÍ: Forzamos la limpieza del nombre en la URL
+                const r = await fetch(`${API_URL}?action=getAgenda&agente=${encodeURIComponent(agente)}`);
                 const datos = await r.json();
                 
                 if (!datos || datos.length === 0) {
-                    lista.innerHTML = '<p style="text-align:center; padding:40px;">No hay entregas hoy.</p>';
+                    lista.innerHTML = `<p style="text-align:center; padding:40px;">No hay entregas asignadas a ${agente} hoy.</p>`;
                     return;
                 }
 
-                // Agrupamos por fecha si el script las envía
                 const grupos = {};
                 datos.forEach(item => {
-                    const f = item.fechaHora ? new Date(item.fechaHora).toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long' }) : "ENTREGAS";
+                    const f = item.fechaHora ? new Date(item.fechaHora).toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long' }) : "PRÓXIMAS";
                     if (!grupos[f]) grupos[f] = [];
                     grupos[f].push(item);
                 });
@@ -162,13 +154,13 @@
                                 </div>
                                 <div class="card-content">
                                     <div style="font-size:18px; font-weight:bold; margin-bottom:10px;">${c.cliente}</div>
-                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                                         <div><div style="font-size:9px; opacity:0.5;">MODELO</div><div style="font-size:13px;">${c.modelo}</div></div>
                                         <div><div style="font-size:9px; opacity:0.5;">MATRÍCULA</div><div style="font-size:13px; font-weight:bold;">${c.matricula}</div></div>
                                     </div>
                                     <div class="vin-box"><div class="vin-text">${vin}</div></div>
                                     <div class="extra-data">
-                                        <div class="data-tag" style="color:${c.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}">VO: ${c.entregaVO}</div>
+                                        <div class="data-tag" style="color:${c.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}; border-color:${c.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}">VO: ${c.entregaVO}</div>
                                         <div class="data-tag tag-blue" onclick="startAutoAssign('${vin}')">
                                             <i class="fas fa-map-marker-alt"></i> ${plaza ? 'PLAZA ' + plaza : 'ASIGNAR'}
                                         </div>
@@ -182,8 +174,22 @@
                     });
                 }
             } catch (e) {
-                lista.innerHTML = '<p style="text-align:center; padding:40px;">Error al cargar. Verifica el Script.</p>';
+                lista.innerHTML = '<p style="color:red; text-align:center; padding:20px;">Error de conexión.<br>Verifica la URL del script.</p>';
             }
+        }
+
+        // --- FUNCIONES MAPA ---
+        function startAutoAssign(vin) {
+            if(!vin || vin === 'NO DISPONIBLE') return;
+            pendingVIN = vin;
+            document.getElementById('target-vin').innerText = vin;
+            document.getElementById('auto-assign-bar').style.display = 'block';
+            switchTab('s-mapa');
+        }
+
+        function cancelAssign() {
+            pendingVIN = null;
+            document.getElementById('auto-assign-bar').style.display = 'none';
         }
 
         const mapConfig = [
@@ -219,7 +225,7 @@
                     } else if(data) {
                         if(confirm("Liberar plaza " + c.id + "?")) delete parkingData[c.id];
                     } else {
-                        const v = prompt("Introduce Bastidor:");
+                        const v = prompt("Bastidor:");
                         if(v) parkingData[c.id] = { vin: v.toUpperCase().trim() };
                     }
                     localStorage.setItem('parkingData', JSON.stringify(parkingData));
@@ -234,8 +240,8 @@
             mapConfig.forEach(c => {
                 const el = document.getElementById('plaza-' + c.id);
                 if(b && parkingData[c.id] && parkingData[c.id].vin.includes(b)) {
-                    el.style.border = "2px solid white";
-                } else { el.style.border = "1px solid rgba(0,0,0,0.1)"; }
+                    el.style.border = "2px solid white"; el.style.boxShadow = "0 0 10px white";
+                } else { el.style.border = "1px solid rgba(0,0,0,0.1)"; el.style.boxShadow = "none"; }
             });
         }
     </script>
