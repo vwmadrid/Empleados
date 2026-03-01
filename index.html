@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>VW PRO | Castellana Wagen</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         :root {
             --vw-blue: #001E50; --vw-light: #00B0F0; --glass: rgba(255, 255, 255, 0.05);
@@ -74,6 +75,25 @@
         <button onclick="cancelAssign()" style="background:var(--vw-blue); color:white; border:none; padding:4px 10px; border-radius:5px; margin-left:10px;">CANCELAR</button>
     </div>
 
+    <div id="modal-aparcar" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,5,16,0.95); backdrop-filter:blur(5px); z-index:3000; align-items:center; justify-content:center; flex-direction:column; padding:20px;">
+        <h2 id="modal-title" style="color:var(--vw-light); margin-top:0;">Aparcar en PLAZA</h2>
+        
+        <div style="background:var(--glass); border:1px solid var(--glass-border); padding:20px; border-radius:15px; width:100%; max-width:350px; text-align:center;">
+            
+            <button onclick="iniciarEscaner()" id="btn-scan" style="width:100%; padding:15px; background:var(--vw-blue); color:white; border:1px solid var(--vw-light); border-radius:10px; font-weight:bold; margin-bottom:15px; font-size:14px;"><i class="fas fa-camera"></i> ESCANEAR CÓDIGO BARRAS</button>
+            
+            <div id="reader" style="width:100%; margin-bottom:15px; background:white; color:black; border-radius:8px; overflow:hidden;"></div>
+            
+            <div style="margin: 15px 0; font-size: 12px; opacity: 0.5;">O ESCRÍBELO A MANO</div>
+            
+            <input type="text" id="modal-vin-input" placeholder="Escribe el bastidor..." style="width:100%; padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(0,0,0,0.5); color:white; font-size:16px; margin-bottom:15px; text-align:center; text-transform:uppercase;">
+            
+            <button onclick="guardarPlazaManual()" style="width:100%; padding:15px; background:var(--success); color:white; border:none; border-radius:10px; font-weight:bold; margin-bottom:10px; font-size:14px;">GUARDAR BASTIDOR</button>
+            
+            <button onclick="cerrarModalAparcar()" style="width:100%; padding:15px; background:transparent; color:#aaa; border:1px solid #444; border-radius:10px; font-weight:bold; font-size:14px;">CANCELAR</button>
+        </div>
+    </div>
+
     <nav class="nav-bottom" id="main-nav" style="display: none;">
         <div class="nav-item active" id="nav-agenda" onclick="switchTab('s-agenda')"><i class="fas fa-list-ul"></i><span>Agenda</span></div>
         <div class="nav-item" id="nav-mapa" onclick="switchTab('s-mapa')"><i class="fas fa-warehouse"></i><span>Garaje</span></div>
@@ -83,7 +103,12 @@
         <img src="https://upload.wikimedia.org/wikipedia/commons/6/6d/Volkswagen_logo_2019.svg" width="60" style="filter: invert(1);">
         <h2 style="font-weight: 200; margin: 30px 0;">Castellana Wagen <b style="color:var(--vw-light)">PRO</b></h2>
         <button onclick="iniciar('MANUEL')" style="width:80%; padding:20px; border-radius:15px; background:var(--vw-blue); color:white; border:1px solid var(--vw-light); font-weight:bold; margin-bottom:15px;">MANUEL</button>
-        <button onclick="iniciar('ALEJANDRO')" style="width:80%; padding:20px; border-radius:15px; background:transparent; color:white; border:1px solid #444; font-weight:bold;">ALEJANDRO</button>
+        <button onclick="iniciar('ALEJANDRO')" style="width:80%; padding:20px; border-radius:15px; background:transparent; color:white; border:1px solid #444; font-weight:bold; margin-bottom:30px;">ALEJANDRO</button>
+        
+        <div style="width:80%; margin:0 auto; border-top:1px dashed #444; padding-top:30px;">
+            <div style="font-size:10px; opacity:0.5; margin-bottom:10px;">ACCESO PREPARADOR</div>
+            <button onclick="iniciarSemat()" style="width:100%; padding:15px; border-radius:10px; background:#111; color:var(--success); border:1px solid var(--success); font-weight:bold;"><i class="fas fa-car"></i> SEMAT (Solo Garaje)</button>
+        </div>
     </section>
 
     <section id="s-agenda" class="screen">
@@ -97,8 +122,8 @@
 
     <section id="s-mapa" class="screen">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <h2 style="font-size:18px; margin:0;">Plano del Garaje</h2>
-            <i class="fas fa-cloud-download-alt" onclick="sincronizarTodo()" style="padding:10px; cursor:pointer; color:var(--vw-light); font-size:18px;"></i>
+            <h2 id="titulo-mapa" style="font-size:18px; margin:0;">Plano del Garaje</h2>
+            <i class="fas fa-sync-alt" onclick="sincronizarTodo()" style="padding:10px; cursor:pointer; color:var(--vw-light); font-size:18px;"></i>
         </div>
         <input type="text" id="busc-map" placeholder="Buscar bastidor en mapa..." onkeyup="buscarEnMapa()" style="width:100%; padding:12px; border-radius:10px; background:var(--glass); border:1px solid var(--glass-border); color:white; margin-bottom:15px;">
         <div class="map-wrapper">
@@ -110,7 +135,6 @@
     </section>
 
     <script>
-        // ¡RECUERDA PEGAR AQUÍ TUS 2 URLs!
         const API_AGENDA = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         const API_GARAJE = "https://script.google.com/macros/s/AKfycbwb_92nWXbKGNew3vlaj8lWHk2rn65njl_6Z5T2BorpcfyGpWwwmSO1SH6DSyYbBm8bLw/exec";
         
@@ -119,19 +143,98 @@
         let notasData = {}; 
         let pendingVIN = null;
         let cochesEntregados = JSON.parse(localStorage.getItem('entregados_vw')) || [];
+        let esSemat = false;
 
+        // --- SISTEMA DE CÁMARA ESCÁNER ---
+        let html5QrcodeScanner = null;
+        let plazaDestino = null;
+
+        function abrirModalAparcar(idPlaza) {
+            plazaDestino = idPlaza;
+            document.getElementById('modal-title').innerText = "Aparcar en PLAZA " + idPlaza;
+            document.getElementById('modal-vin-input').value = "";
+            document.getElementById('btn-scan').style.display = 'block';
+            document.getElementById('reader').style.display = 'none';
+            document.getElementById('modal-aparcar').style.display = 'flex';
+        }
+
+        function cerrarModalAparcar() {
+            document.getElementById('modal-aparcar').style.display = 'none';
+            if (html5QrcodeScanner) {
+                html5QrcodeScanner.clear().catch(e => console.error(e));
+                html5QrcodeScanner = null;
+            }
+        }
+
+        function iniciarEscaner() {
+            document.getElementById('btn-scan').style.display = 'none';
+            document.getElementById('reader').style.display = 'block';
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 100} }, false);
+            html5QrcodeScanner.render(
+                function(decodedText) { // Éxito
+                    document.getElementById('modal-vin-input').value = decodedText;
+                    if (html5QrcodeScanner) { html5QrcodeScanner.clear(); html5QrcodeScanner = null; }
+                    document.getElementById('reader').style.display = 'none';
+                    // Al escanear con éxito, lo guardamos automáticamente (Magia pura)
+                    guardarPlazaManual(); 
+                }, 
+                function(error) { /* Ignorar errores de lectura en proceso */ }
+            );
+        }
+
+        function guardarPlazaManual() {
+            const v = document.getElementById('modal-vin-input').value.toUpperCase().trim();
+            if(v) {
+                cerrarModalAparcar();
+                checkAndMove(v, plazaDestino);
+            }
+        }
+
+        function checkAndMove(nuevoVin, idPlazaDestino) {
+            let plazaAntigua = null;
+            for(let id in parkingData) { if(parkingData[id].vin === nuevoVin) plazaAntigua = id; }
+
+            if(plazaAntigua) {
+                if(plazaAntigua === idPlazaDestino) {
+                    alert("El coche ya está en esta misma plaza.");
+                } else {
+                    if(confirm(`⚠️ El bastidor ${nuevoVin} ya está aparcado en la PLAZA ${plazaAntigua}.\n\n¿Quieres moverlo a la PLAZA ${idPlazaDestino}?`)) {
+                        actualizarPlazaNube(plazaAntigua, ""); 
+                        setTimeout(() => actualizarPlazaNube(idPlazaDestino, nuevoVin), 400); 
+                    }
+                }
+            } else {
+                actualizarPlazaNube(idPlazaDestino, nuevoVin);
+            }
+        }
+
+        // --- LOGIN COMERCIALES ---
         function iniciar(n) {
             agente = n;
+            esSemat = false;
             document.getElementById('s-login').classList.remove('active');
             document.getElementById('s-agenda').classList.add('active');
             document.getElementById('main-nav').style.display = 'flex';
             document.getElementById('user-title').innerText = "ENTREGAS: " + agente;
-            
             renderMap();
             sincronizarTodo();
         }
 
+        // --- LOGIN SEMAT (SOLO GARAJE) ---
+        function iniciarSemat() {
+            agente = "SEMAT";
+            esSemat = true;
+            document.getElementById('s-login').classList.remove('active');
+            document.getElementById('s-mapa').classList.add('active');
+            document.getElementById('main-nav').style.display = 'none'; // Fuera agenda
+            document.getElementById('titulo-mapa').innerText = "GARAJE SEMAT";
+            
+            renderMap();
+            sincronizarTodo(); // Carga solo el garaje
+        }
+
         function switchTab(id) {
+            if(esSemat) return; // SEMAT no puede cambiar de pestaña
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             document.getElementById(id).classList.add('active');
@@ -139,28 +242,25 @@
             window.scrollTo(0,0);
         }
 
-        // --- GARAJE Y NOTAS EN LA NUBE (AHORA BLINDADO ANTI-CUELGUES) ---
         async function sincronizarTodo() {
             document.getElementById('loading-map').style.display = 'block';
             
-            // 1. CARGAMOS LA AGENDA INMEDIATAMENTE (Nunca se va a colgar)
-            cargarAgenda();
+            if(!esSemat) cargarAgenda(); // SEMAT no carga la agenda, se ahorra datos
 
-            // 2. CARGAMOS EL GARAJE DE FONDO
             try {
                 const resGaraje = await fetch(API_GARAJE + "?action=getParking&t=" + Date.now());
                 parkingData = await resGaraje.json();
             } catch (e) { console.error("Fallo al cargar garaje", e); }
 
-            // 3. CARGAMOS LAS NOTAS DE FONDO
-            try {
-                const resNotas = await fetch(API_GARAJE + "?action=getNotas&t=" + Date.now());
-                notasData = await resNotas.json();
-            } catch (e) { console.error("Fallo al cargar notas", e); }
+            if(!esSemat) {
+                try {
+                    const resNotas = await fetch(API_GARAJE + "?action=getNotas&t=" + Date.now());
+                    notasData = await resNotas.json();
+                } catch (e) { console.error("Fallo al cargar notas", e); }
+            }
 
-            // Refrescamos todo visualmente cuando llega
             renderMap();
-            cargarAgenda(); 
+            if(!esSemat) cargarAgenda(); 
             document.getElementById('loading-map').style.display = 'none';
         }
 
@@ -169,7 +269,7 @@
             else delete parkingData[idPlaza];
             
             renderMap();
-            cargarAgenda();
+            if(!esSemat) cargarAgenda();
 
             try {
                 const urlSegura = API_GARAJE + "?action=setParking&plaza=" + idPlaza + "&vin=" + encodeURIComponent(vin) + "&t=" + Date.now();
@@ -180,18 +280,15 @@
         async function editarNota(vin) {
             if(!vin || vin === 'NO DISPONIBLE') return;
             const notaActual = notasData[vin] || "";
-            const nuevaNota = prompt("Escribe una nota para el bastidor " + vin + " (la verán tus compañeros):", notaActual);
+            const nuevaNota = prompt("Escribe una nota para el bastidor " + vin + ":", notaActual);
 
             if (nuevaNota !== null) {
                 notasData[vin] = nuevaNota;
                 cargarAgenda(); 
-                
                 try {
                     const urlSegura = API_GARAJE + "?action=setNota&vin=" + encodeURIComponent(vin) + "&nota=" + encodeURIComponent(nuevaNota) + "&t=" + Date.now();
                     fetch(urlSegura, { method: 'GET', mode: 'cors' });
-                } catch (e) {
-                    alert("Error subiendo la nota a la nube.");
-                }
+                } catch (e) { alert("Error subiendo la nota a la nube."); }
             }
         }
 
@@ -223,7 +320,6 @@
                 if(confirm("¿Marcar coche como ENTREGADO?\nSu plaza del garaje se liberará automáticamente.")) {
                     cochesEntregados.push(vin);
                     localStorage.setItem('entregados_vw', JSON.stringify(cochesEntregados));
-                    
                     let plazaAsignada = null;
                     for(let id in parkingData) { if(parkingData[id].vin === vin) plazaAsignada = id; }
                     if (plazaAsignada) actualizarPlazaNube(plazaAsignada, ""); 
@@ -236,8 +332,8 @@
             }
         }
 
-        // --- AGENDA BLINDADA ---
         async function cargarAgenda() {
+            if(esSemat) return; // Seguridad extra
             const lista = document.getElementById('contenedor-agenda');
             if(lista.innerHTML === "") lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando entregas de ' + agente + '...</p>';
             
@@ -338,7 +434,6 @@
             }
         }
 
-        // --- MAPA ---
         const mapConfig = [
             ...Array.from({length: 20}, (_, i) => ({ id: (12 + i).toString(), col: '1 / 6', row: `${i + 1} / ${i + 2}` })),
             { id: '11', col: '10 / 16', row: '1 / 2' }, { id: '9', col: '10 / 16', row: '2 / 3' },
@@ -373,34 +468,14 @@
                 div.innerHTML = `<span class="spot-num">${c.id}</span><div class="spot-vin-text">${vinMostrado}</div>`;
                 
                 div.onclick = () => {
-                    const checkAndMove = (nuevoVin) => {
-                        let plazaAntigua = null;
-                        for(let id in parkingData) {
-                            if(parkingData[id].vin === nuevoVin) plazaAntigua = id;
-                        }
-
-                        if(plazaAntigua) {
-                            if(plazaAntigua === c.id) {
-                                alert("El coche ya está en esta misma plaza.");
-                            } else {
-                                if(confirm(`⚠️ El bastidor ${nuevoVin} ya está aparcado en la PLAZA ${plazaAntigua}.\n\n¿Quieres moverlo a la PLAZA ${c.id}?`)) {
-                                    actualizarPlazaNube(plazaAntigua, ""); 
-                                    setTimeout(() => actualizarPlazaNube(c.id, nuevoVin), 400); 
-                                }
-                            }
-                        } else {
-                            actualizarPlazaNube(c.id, nuevoVin);
-                        }
-                    };
-
                     if(pendingVIN) {
-                        checkAndMove(pendingVIN);
+                        checkAndMove(pendingVIN, c.id);
                         cancelAssign();
                     } else if(data) {
                         if(confirm("¿Liberar plaza " + c.id + "?\nBastidor: " + data.vin)) actualizarPlazaNube(c.id, "");
                     } else {
-                        const v = prompt("Aparcar - Introduce Bastidor:");
-                        if(v) checkAndMove(String(v).toUpperCase().trim());
+                        // AQUÍ ABRIMOS LA MAGIA DEL ESCÁNER EN VEZ DEL PROMPT ABURRIDO
+                        abrirModalAparcar(c.id);
                     }
                 };
                 grid.appendChild(div);
