@@ -45,7 +45,6 @@
         .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; background: rgba(0,0,0,0.2); }
         .btn-act { padding: 12px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
-        /* MAPA */
         .map-wrapper { overflow-x: auto; padding: 10px; background: #050a15; border-radius: 12px; border: 1px solid var(--glass-border); }
         .map-grid { display: grid; grid-template-columns: repeat(24, 30px); grid-template-rows: repeat(20, 35px); gap: 3px; }
         .spot { background: var(--success); color: white; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; font-weight: bold; border: 1px solid rgba(0,0,0,0.1); overflow: hidden; text-align: center; line-height: 1; }
@@ -93,7 +92,6 @@
     </section>
 
     <script>
-        // PEGA TU URL AQUÍ
         const API_URL = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         
         let agente = "";
@@ -101,7 +99,7 @@
         let pendingVIN = null;
 
         function iniciar(n) {
-            agente = n.trim().toUpperCase(); // Limpiamos espacios y forzamos mayúsculas
+            agente = n;
             document.getElementById('s-login').classList.remove('active');
             document.getElementById('s-agenda').classList.add('active');
             document.getElementById('main-nav').style.display = 'flex';
@@ -116,17 +114,34 @@
             document.getElementById('nav-' + id.split('-')[1]).classList.add('active');
         }
 
+        async function intentarPeticion(nombre) {
+            const r = await fetch(`${API_URL}?action=getAgenda&agente=${encodeURIComponent(nombre)}`);
+            const d = await r.json();
+            return d;
+        }
+
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
-            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Sincronizando ' + agente + '...</p>';
+            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Buscando entregas...</p>';
             
             try {
-                // EL CAMBIO ESTÁ AQUÍ: Forzamos la limpieza del nombre en la URL
-                const r = await fetch(`${API_URL}?action=getAgenda&agente=${encodeURIComponent(agente)}`);
-                const datos = await r.json();
+                let datos = [];
+                // PRUEBA 1: Nombre tal cual (ej: MANUEL)
+                datos = await intentarPeticion(agente);
+                
+                // PRUEBA 2: Si falla, prueba con espacio (ej: "MANUEL ")
+                if (!datos || datos.length === 0) {
+                    datos = await intentarPeticion(agente + " ");
+                }
+
+                // PRUEBA 3: Si falla, prueba minúsculas (ej: Manuel)
+                if (!datos || datos.length === 0) {
+                    let nombreCapitalizado = agente.charAt(0).toUpperCase() + agente.slice(1).toLowerCase();
+                    datos = await intentarPeticion(nombreCapitalizado);
+                }
                 
                 if (!datos || datos.length === 0) {
-                    lista.innerHTML = `<p style="text-align:center; padding:40px;">No hay entregas asignadas a ${agente} hoy.</p>`;
+                    lista.innerHTML = `<p style="text-align:center; padding:40px;">No hay datos para "${agente}".<br><small>Revisa cómo está escrito en el Excel exactamente.</small></p>`;
                     return;
                 }
 
@@ -160,7 +175,7 @@
                                     </div>
                                     <div class="vin-box"><div class="vin-text">${vin}</div></div>
                                     <div class="extra-data">
-                                        <div class="data-tag" style="color:${c.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}; border-color:${c.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}">VO: ${c.entregaVO}</div>
+                                        <div class="data-tag" style="color:${c.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}">VO: ${c.entregaVO}</div>
                                         <div class="data-tag tag-blue" onclick="startAutoAssign('${vin}')">
                                             <i class="fas fa-map-marker-alt"></i> ${plaza ? 'PLAZA ' + plaza : 'ASIGNAR'}
                                         </div>
@@ -178,7 +193,7 @@
             }
         }
 
-        // --- FUNCIONES MAPA ---
+        // --- MAPA ---
         function startAutoAssign(vin) {
             if(!vin || vin === 'NO DISPONIBLE') return;
             pendingVIN = vin;
@@ -240,8 +255,8 @@
             mapConfig.forEach(c => {
                 const el = document.getElementById('plaza-' + c.id);
                 if(b && parkingData[c.id] && parkingData[c.id].vin.includes(b)) {
-                    el.style.border = "2px solid white"; el.style.boxShadow = "0 0 10px white";
-                } else { el.style.border = "1px solid rgba(0,0,0,0.1)"; el.style.boxShadow = "none"; }
+                    el.style.border = "2px solid white";
+                } else { el.style.border = "1px solid rgba(0,0,0,0.1)"; }
             });
         }
     </script>
