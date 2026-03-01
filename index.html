@@ -17,7 +17,6 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Segoe UI', Roboto, sans-serif; }
         body { margin: 0; background: var(--bg-dark); color: white; min-height: 100vh; padding-bottom: 90px; }
 
-        /* NAVEGACIÓN */
         .nav-bottom {
             position: fixed; bottom: 0; left: 0; right: 0; height: 75px;
             background: rgba(0, 10, 30, 0.95); backdrop-filter: blur(15px);
@@ -33,7 +32,6 @@
         .screen.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* AGENDA */
         .day-divider {
             background: linear-gradient(90deg, var(--vw-blue), transparent);
             padding: 10px 15px; margin: 25px 0 10px 0; border-left: 4px solid var(--vw-light);
@@ -50,7 +48,7 @@
         .pedido-no { background: #444; color: #aaa; }
 
         .card-content { padding: 15px; }
-        .vin-box { background: rgba(0,0,0,0.4); padding: 8px; border-radius: 8px; margin: 10px 0; border: 1px dashed rgba(255,255,255,0.2); }
+        .vin-box { background: rgba(0,0,0,0.4); padding: 8px; border-radius: 8px; margin: 10px 0; border: 1px solid rgba(255,255,255,0.1); }
         .vin-text { font-family: monospace; font-size: 12px; color: var(--vw-light); word-break: break-all; }
 
         .extra-data { display: flex; gap: 10px; margin-top: 10px; }
@@ -60,7 +58,6 @@
         .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; background: rgba(0,0,0,0.2); }
         .btn-act { padding: 12px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
-        /* PLANO GARAJE */
         .map-wrapper { overflow-x: auto; padding: 10px; background: #050a15; border-radius: 12px; border: 1px solid var(--glass-border); }
         .map-grid { display: grid; grid-template-columns: repeat(24, 30px); grid-template-rows: repeat(20, 35px); gap: 3px; }
         .spot { 
@@ -77,15 +74,14 @@
         #auto-assign-bar { 
             position: fixed; top: 0; left: 0; right: 0; background: var(--vw-light); color: var(--vw-blue); 
             padding: 12px; text-align: center; font-weight: bold; font-size: 12px; z-index: 2000; display: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
     </style>
 </head>
 <body>
 
     <div id="auto-assign-bar">
-        ASIGNANDO VIN: <span id="target-vin"></span> 
-        <button onclick="cancelAssign()" style="background:var(--vw-blue); color:white; border:none; padding:4px 10px; border-radius:5px; margin-left:10px; font-size:10px;">CANCELAR</button>
+        ASIGNANDO BASTIDOR: <span id="target-vin"></span> 
+        <button onclick="cancelAssign()" style="background:var(--vw-blue); color:white; border:none; padding:4px 10px; border-radius:5px; margin-left:10px;">X</button>
     </div>
 
     <nav class="nav-bottom" id="main-nav" style="display: none;">
@@ -114,14 +110,14 @@
 
     <section id="s-mapa" class="screen">
         <h2 style="font-size:18px; margin-bottom:10px;">Plano Garaje</h2>
-        <input type="text" id="busc-map" placeholder="Buscar bastidor en mapa..." onkeyup="buscarEnMapa()" style="width:100%; padding:12px; border-radius:10px; background:var(--glass); border:1px solid var(--glass-border); color:white; margin-bottom:15px;">
+        <input type="text" id="busc-map" placeholder="Buscar bastidor..." onkeyup="buscarEnMapa()" style="width:100%; padding:12px; border-radius:10px; background:var(--glass); border:1px solid var(--glass-border); color:white; margin-bottom:15px;">
         <div class="map-wrapper">
             <div class="map-grid" id="parking-grid"></div>
         </div>
     </section>
 
     <script>
-        // SUSTITUYE ESTA URL POR LA TUYA DE GOOGLE SCRIPTS
+        // *** IMPORTANTE: PEGA AQUÍ TU URL DE GOOGLE ***
         const API_URL = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         
         let agente = "";
@@ -146,8 +142,8 @@
         }
 
         function startAutoAssign(vin) {
-            if(!vin || vin === 'NO DISPONIBLE') { alert("Este coche no tiene bastidor."); return; }
-            pendingVIN = vin.toUpperCase();
+            if(!vin || vin === 'NO DISPONIBLE') { alert("Sin bastidor"); return; }
+            pendingVIN = vin.toUpperCase().trim();
             document.getElementById('target-vin').innerText = pendingVIN;
             document.getElementById('auto-assign-bar').style.display = 'block';
             switchTab('s-mapa');
@@ -160,12 +156,16 @@
 
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
-            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Sincronizando Excel...</p>';
+            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando datos de ' + agente + '...</p>';
             
             try {
-                const r = await fetch(`${API_URL}?action=getAgenda&agente=${agente}`);
-                const datos = await r.json();
+                // He añadido encodeURIComponent para evitar errores con nombres
+                const r = await fetch(`${API_URL}?action=getAgenda&agente=${encodeURIComponent(agente)}`);
+                const textoPlano = await r.text(); 
+                const datos = JSON.parse(textoPlano);
                 
+                if (datos.error) throw new Error(datos.error);
+
                 const grupos = {};
                 datos.forEach(item => {
                     const f = new Date(item.fechaHora).toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long' });
@@ -179,7 +179,7 @@
                     grupos[dia].forEach(coche => {
                         const hora = new Date(coche.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
                         const tel = String(coche.telefono || "").replace(/\s/g, '');
-                        const vin = (coche.bastidor || 'NO DISPONIBLE').toUpperCase();
+                        const vin = (coche.bastidor || 'NO DISPONIBLE').toUpperCase().trim();
                         
                         let plazaAsignada = null;
                         for(let id in parkingData) { if(parkingData[id].vin === vin) plazaAsignada = id; }
@@ -196,14 +196,14 @@
                                         <div><div style="font-size:9px; opacity:0.5;">MODELO</div><div style="font-size:13px;">${coche.modelo}</div></div>
                                         <div><div style="font-size:9px; opacity:0.5;">MATRÍCULA</div><div style="font-size:13px; font-weight:bold;">${coche.matricula}</div></div>
                                     </div>
-                                    <div class="vin-box">
-                                        <div style="font-size:9px; opacity:0.5;">BASTIDOR (VIN) COMPLETO</div>
+                                    <div class="vin-box" style="padding:10px; margin-top:10px; background:rgba(0,0,0,0.3)">
+                                        <div style="font-size:9px; opacity:0.5;">BASTIDOR COMPLETO</div>
                                         <div class="vin-text">${vin}</div>
                                     </div>
                                     <div class="extra-data">
-                                        <div class="data-tag" style="color:${coche.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}; border-color:${coche.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}">ENTREGA VEHÍCULO: ${coche.entregaVO === 'SÍ' ? 'SÍ' : 'NO'}</div>
+                                        <div class="data-tag" style="color:${coche.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}; border-color:${coche.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}">VO: ${coche.entregaVO === 'SÍ' ? 'SÍ' : 'NO'}</div>
                                         <div class="data-tag tag-blue" onclick="startAutoAssign('${vin}')">
-                                            <i class="fas fa-map-marker-alt"></i> ${plazaAsignada ? 'PLAZA ' + plazaAsignada : 'ASIGNAR PLAZA'}
+                                            <i class="fas fa-map-marker-alt"></i> ${plazaAsignada ? 'PLAZA ' + plazaAsignada : 'ASIGNAR'}
                                         </div>
                                     </div>
                                 </div>
@@ -215,11 +215,15 @@
                     });
                 }
             } catch (e) {
-                console.error(e);
-                lista.innerHTML = '<p style="color:red; text-align:center; padding:20px;">Error de conexión.<br>Verifica la URL del script.</p>';
+                lista.innerHTML = `<div style="text-align:center; padding:30px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size:30px; color:var(--danger)"></i>
+                    <p style="margin-top:15px;">Error de datos para ${agente}.<br><small>Verifica que su nombre esté exacto en el Excel.</small></p>
+                    <button onclick="cargarAgenda()" style="background:var(--vw-light); color:var(--vw-blue); border:none; padding:10px 20px; border-radius:10px; font-weight:bold;">REINTENTAR</button>
+                </div>`;
             }
         }
 
+        // MAPA COMPLETO GARAJE
         const mapConfig = [
             ...Array.from({length: 20}, (_, i) => ({ id: (12 + i).toString(), col: '1 / 6', row: `${i + 1} / ${i + 2}` })),
             { id: '11', col: '10 / 16', row: '1 / 2' }, { id: '9', col: '10 / 16', row: '2 / 3' },
@@ -248,40 +252,31 @@
                 div.className = 'spot ' + (data ? 'occupied' : '');
                 div.id = 'plaza-' + c.id;
                 div.style.gridColumn = c.col; div.style.gridRow = c.row;
-                
-                div.innerHTML = `
-                    <span class="spot-num">${c.id}</span>
-                    <div class="spot-vin-text">${data ? data.vin : ''}</div>
-                `;
-                
+                div.innerHTML = `<span class="spot-num">${c.id}</span><div class="spot-vin-text">${data ? data.vin : ''}</div>`;
                 div.onclick = () => {
                     if(pendingVIN) {
                         parkingData[c.id] = { vin: pendingVIN };
                         cancelAssign();
                     } else if(data) {
-                        if(confirm("Bastidor: " + data.vin + "\n¿Liberar plaza " + c.id + "?")) delete parkingData[c.id];
+                        if(confirm("Bastidor: " + data.vin + "\n¿Liberar plaza?")) delete parkingData[c.id];
                     } else {
-                        const vinManual = prompt("Introducir Bastidor manualmente:");
-                        if(vinManual) parkingData[c.id] = { vin: vinManual.toUpperCase() };
+                        const v = prompt("Bastidor manual:");
+                        if(v) parkingData[c.id] = { vin: v.toUpperCase().trim() };
                     }
                     localStorage.setItem('parkingData', JSON.stringify(parkingData));
-                    renderMap(); 
-                    cargarAgenda();
+                    renderMap(); cargarAgenda();
                 };
                 grid.appendChild(div);
             });
         }
 
         function buscarEnMapa() {
-            const busq = document.getElementById('busc-map').value.toUpperCase();
+            const b = document.getElementById('busc-map').value.toUpperCase();
             mapConfig.forEach(c => {
                 const el = document.getElementById('plaza-' + c.id);
-                if(!el) return;
-                if(busq && parkingData[c.id] && parkingData[c.id].vin.includes(busq)) {
+                if(b && parkingData[c.id] && parkingData[c.id].vin.includes(b)) {
                     el.style.border = "2px solid white"; el.style.boxShadow = "0 0 10px white";
-                } else { 
-                    el.style.border = "1px solid rgba(0,0,0,0.1)"; el.style.boxShadow = "none";
-                }
+                } else { el.style.border = "1px solid rgba(0,0,0,0.1)"; el.style.boxShadow = "none"; }
             });
         }
     </script>
