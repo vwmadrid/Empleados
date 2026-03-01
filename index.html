@@ -99,7 +99,7 @@
     </section>
 
     <script>
-        // TUS DOS URLs CONECTADAS
+        // PEGA AQUÍ TUS 2 URLs
         const API_AGENDA = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         const API_GARAJE = "https://script.google.com/macros/s/AKfycbwb_92nWXbKGNew3vlaj8lWHk2rn65njl_6Z5T2BorpcfyGpWwwmSO1SH6DSyYbBm8bLw/exec";
         
@@ -135,7 +135,6 @@
         async function cargarGarajeNube() {
             document.getElementById('loading-map').style.display = 'block';
             try {
-                // Añadimos un timestamp para que no cargue datos viejos cacheados
                 const url = API_GARAJE + "?action=getParking&t=" + Date.now();
                 const response = await fetch(url);
                 parkingData = await response.json();
@@ -222,6 +221,8 @@
                         const pedido = String(c.pedido || '').toUpperCase().trim();
                         const vo = String(c.entregaVO || '').toUpperCase().trim();
                         const tel = String(c.telefono || '').replace(/\s/g, '');
+                        // AÑADIDO RENTING: Comprueba si existe el dato
+                        const renting = c.renting ? String(c.renting).toUpperCase().trim() : ''; 
                         
                         let plazaAsignada = null;
                         for(let id in parkingData) { if(parkingData[id].vin === vin) plazaAsignada = id; }
@@ -233,7 +234,9 @@
                                     <span class="status-badge ${pedido === 'SÍ' ? 'pedido-si' : 'pedido-no'}">${pedido === 'SÍ' ? 'PEDIDO' : 'NO PEDIDO'}</span>
                                 </div>
                                 <div class="card-content">
-                                    <div style="font-size:18px; font-weight:bold; margin-bottom:10px;">${c.cliente || '-'}</div>
+                                    <div style="font-size:18px; font-weight:bold; margin-bottom:5px;">${c.cliente || '-'}</div>
+                                    ${renting ? `<div style="font-size:11px; color:var(--vw-light); margin-bottom:10px; font-weight:bold;"><i class="fas fa-building"></i> RENTING: ${renting}</div>` : ''}
+                                    
                                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                                         <div><div style="font-size:9px; opacity:0.5;">MODELO</div><div style="font-size:13px;">${c.modelo || '-'}</div></div>
                                         <div><div style="font-size:9px; opacity:0.5;">MATRÍCULA</div><div style="font-size:13px; font-weight:bold;">${c.matricula || '-'}</div></div>
@@ -243,7 +246,7 @@
                                         <div class="vin-text">${vin}</div>
                                     </div>
                                     <div class="extra-data">
-                                        <div class="data-tag" style="color:${vo === 'SÍ' ? 'var(--warning)' : 'var(--success)'}; border-color:${vo === 'SÍ' ? 'var(--warning)' : 'var(--success)'}">VO: ${vo === 'SÍ' ? 'SÍ' : 'NO'}</div>
+                                        <div class="data-tag" style="color:${vo === 'SÍ' ? 'var(--warning)' : 'var(--success)'}; border-color:${vo === 'SÍ' ? 'var(--warning)' : 'var(--success)'}">ENTREGA COCHE: ${vo === 'SÍ' ? 'SÍ' : 'NO'}</div>
                                         <div class="data-tag tag-blue" onclick="startAutoAssign('${vin}')">
                                             <i class="fas fa-map-marker-alt"></i> ${plazaAsignada ? 'PLAZA ' + plazaAsignada : 'ASIGNAR PLAZA'}
                                         </div>
