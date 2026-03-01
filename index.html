@@ -3,300 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VW Gestión Integral | Castellana Wagen</title>
+    <title>VW Entregas PRO | Castellana Wagen</title>
     
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
     <style>
         :root {
-            --vw-blue: #001E50; --vw-light: #00B0F0; --glass: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1); --success: #25D366; --warning: #ff9800; --danger: #ff4444;
-            --bg-dark: #000510; --nav-height: 70px;
+            --vw-blue: #001E50; --vw-light: #00B0F0; --glass: rgba(255, 255, 255, 0.07);
+            --glass-border: rgba(255, 255, 255, 0.12); --success: #25D366; --warning: #ff9800; --danger: #ff4444;
+            --bg-dark: #000510;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Segoe UI', Roboto, sans-serif; }
-        body { margin: 0; background: var(--bg-dark); color: white; min-height: 100vh; overflow-x: hidden; }
+        body { margin: 0; background: var(--bg-dark); color: white; min-height: 100vh; padding-bottom: 80px; }
+
+        .screen { display: none; padding: 20px; animation: fadeIn 0.3s ease; }
+        .screen.active { display: flex; flex-direction: column; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* CABECERA DE DÍA */
+        .day-header {
+            background: var(--vw-blue);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            border-bottom: 3px solid var(--vw-light);
+        }
+        .day-header h1 { margin: 0; font-size: 18px; text-transform: uppercase; letter-spacing: 2px; }
+
+        /* TARJETA DE COCHE (PESTAÑA) */
+        .car-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 18px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        .card-top {
+            background: rgba(255,255,255,0.05);
+            padding: 12px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+        }
+        .delivery-time { font-size: 22px; font-weight: 900; color: var(--vw-light); }
+        .renting-tag { background: var(--vw-light); color: var(--vw-blue); padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; }
+
+        .card-body { padding: 18px; }
+        .info-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 12px; }
+        .data-label { font-size: 9px; opacity: 0.5; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.5px; }
+        .data-value { font-size: 14px; font-weight: 600; }
+        
+        .vin-box { background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; margin-top: 10px; border: 1px dashed rgba(255,255,255,0.2); }
+
+        /* ALERTAS VO */
+        .vo-indicator { padding: 8px; border-radius: 8px; text-align: center; font-size: 11px; font-weight: bold; margin-top: 10px; }
+        .vo-si { background: rgba(255, 152, 0, 0.2); color: var(--warning); border: 1px solid var(--warning); }
+        .vo-no { background: rgba(37, 211, 102, 0.1); color: var(--success); border: 1px solid var(--success); }
+
+        /* BOTONES RAPIDOS */
+        .card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 15px; background: rgba(0,0,0,0.2); }
+        .btn-mini { padding: 12px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 8px; }
 
         /* NAVEGACIÓN INFERIOR */
-        .nav-bottom {
-            position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-height);
-            background: rgba(0, 5, 16, 0.95); backdrop-filter: blur(10px);
-            display: flex; justify-content: space-around; align-items: center;
-            border-top: 1px solid var(--glass-border); z-index: 1000; padding-bottom: env(safe-area-inset-bottom);
-        }
-        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 5px; opacity: 0.4; transition: 0.3s; cursor: pointer; }
-        .nav-item.active { opacity: 1; color: var(--vw-light); }
-        .nav-item i { font-size: 20px; }
-        .nav-item span { font-size: 10px; font-weight: bold; text-transform: uppercase; }
-
-        /* CONTENEDORES DE PANTALLA */
-        .screen { display: none; flex-direction: column; padding: 20px; padding-bottom: 100px; animation: fadeIn 0.3s ease; min-height: 100vh; }
-        .screen.active { display: flex; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* ESTILOS DE ENTREGAS (VERSION ANTERIOR) */
-        .delivery-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 15px; padding: 15px; margin-bottom: 12px; display: flex; align-items: center; gap: 15px; }
-        .date-box { background: rgba(0, 176, 240, 0.1); border-radius: 10px; padding: 8px; min-width: 65px; text-align: center; border: 1px solid var(--vw-light); }
-        .date-box .hour { font-size: 16px; font-weight: 900; color: var(--vw-light); }
-        .info-main { flex-grow: 1; }
-        .info-main .model { font-size: 15px; font-weight: bold; }
-        .info-main .renting-label { font-size: 10px; color: var(--vw-light); font-weight: 800; }
-
-        /* ESTILOS PLANO TALLER (ADAPTADOS) */
-        .map-container { overflow-x: auto; padding: 10px; background: #0a1120; border-radius: 15px; border: 1px solid var(--glass-border); }
-        .map-grid { display: grid; grid-template-columns: repeat(24, 30px); grid-template-rows: repeat(20, 35px); gap: 3px; margin: 0 auto; }
-        .spot { 
-            background: var(--success); color: white; border-radius: 3px; font-size: 9px;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            cursor: pointer; position: relative; font-weight: bold;
-        }
-        .spot.occupied { background: var(--danger); }
-        .spot.warning { background: #8B0000; border: 1px solid gold; }
-        .pasillo-visual { background: #1a253a; color: #4e5d7a; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; }
-        
-        /* SEARCH BOX */
-        .search-container { margin-bottom: 15px; }
-        .search-container input { 
-            width: 100%; background: var(--glass); border: 1px solid var(--glass-border); 
-            padding: 12px; border-radius: 10px; color: white; outline: none;
-        }
-
-        /* DETALLE */
-        .detail-card { background: var(--glass); border-radius: 20px; border: 1px solid var(--glass-border); padding: 20px; margin-bottom: 15px; }
-        .label { font-size: 10px; opacity: 0.5; text-transform: uppercase; margin-bottom: 4px; }
-        .value { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
-        .vo-badge { padding: 12px; border-radius: 10px; margin-bottom: 15px; font-weight: bold; text-align: center; font-size: 12px; }
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; height: 70px; background: rgba(0,10,30,0.95); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--glass-border); backdrop-filter: blur(10px); }
+        .nav-btn { opacity: 0.4; text-align: center; font-size: 10px; color: white; text-decoration: none; }
+        .nav-btn.active { opacity: 1; color: var(--vw-light); }
     </style>
 </head>
 <body>
 
-    <nav class="nav-bottom" id="main-nav" style="display: none;">
-        <div class="nav-item active" onclick="switchTab('s-agenda', this)">
-            <i class="fas fa-calendar-check"></i><span>Entregas</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('s-mapa', this)">
-            <i class="fas fa-map-marked-alt"></i><span>Plano Taller</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('s-historial', this)">
-            <i class="fas fa-history"></i><span>Historial</span>
-        </div>
-    </nav>
-
-    <section id="s-login" class="screen active" style="justify-content: center;">
-        <div style="text-align: center; margin-bottom: 30px;">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6d/Volkswagen_logo_2019.svg" width="60" style="filter: brightness(0) invert(1);">
-            <h2 style="font-weight: 200; margin-top: 10px;">Gestión <b style="font-weight: 900;">VW PRO</b></h2>
-        </div>
-        <div style="background: var(--glass); padding: 25px; border-radius: 25px; border: 1px solid var(--vw-light);">
-            <p style="text-align: center; font-size: 12px; opacity: 0.6; margin-bottom: 20px;">SELECCIONA TU USUARIO</p>
-            <button onclick="login('Manuel')" style="width: 100%; padding: 20px; border-radius: 15px; border: 1px solid var(--vw-light); background: transparent; color: white; font-weight: bold; margin-bottom: 15px;"><i class="fas fa-user-tie"></i> MANUEL</button>
-            <button onclick="login('Alejandro')" style="width: 100%; padding: 20px; border-radius: 15px; border: 1px solid var(--vw-light); background: transparent; color: white; font-weight: bold;"><i class="fas fa-user-tie"></i> ALEJANDRO</button>
+    <section id="s-login" class="screen active" style="justify-content: center; min-height: 100vh;">
+        <div style="text-align: center;">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6d/Volkswagen_logo_2019.svg" width="60" style="filter: brightness(0) invert(1); margin-bottom: 20px;">
+            <h2>Castellana Wagen <b style="color:var(--vw-light)">PRO</b></h2>
+            <button onclick="login('Manuel')" style="width: 100%; padding: 20px; border-radius: 15px; background: var(--vw-blue); color: white; border: 1px solid var(--vw-light); font-weight: bold; margin-top: 30px;">ACCEDER COMO MANUEL</button>
         </div>
     </section>
 
     <section id="s-agenda" class="screen">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 id="welcome-msg" style="margin:0; font-size: 22px;">Entregas</h2>
-            <i class="fas fa-sync" onclick="cargarAgenda()"></i>
+        <div class="day-header">
+            <h1 id="current-day-label">CARGANDO...</h1>
         </div>
         <div id="lista-entregas"></div>
     </section>
 
     <section id="s-mapa" class="screen">
-        <h2 style="margin-bottom: 10px;">Plano Taller</h2>
-        <div class="search-container">
-            <input type="text" id="buscador-plazas" placeholder="🔍 Buscar matrícula en el taller..." onkeyup="buscarEnMapa()">
-        </div>
-        <div style="display: flex; gap: 10px; margin-bottom: 10px; font-size: 11px;">
-            <span style="color: var(--success)">● Libres</span>
-            <span style="color: var(--danger)">● Ocupadas</span>
-            <span style="color: #8B0000">● +5 Días</span>
-        </div>
-        <div class="map-container">
-            <div class="map-grid" id="parking-grid">
-                </div>
+        <h2>Ubicación en Taller</h2>
+        <div id="map-placeholder" style="background:var(--glass); height: 400px; border-radius: 15px; display: flex; align-items: center; justify-content: center; opacity: 0.5;">
+            Pronto aquí el plano dinámico corregido
         </div>
     </section>
 
-    <section id="s-historial" class="screen">
-        <h2>Historial de Movimientos</h2>
-        <div id="historial-lista">
-            </div>
-    </section>
-
-    <section id="s-detail" class="screen">
-        <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px; color: var(--vw-light);" onclick="navTo('s-agenda')">
-            <i class="fas fa-arrow-left"></i> VOLVER A LISTA
-        </div>
-        <div id="vo-alerta" class="vo-badge"></div>
-        <div class="detail-card">
-            <div class="label">Renting</div>
-            <div id="det-renting" class="value" style="color: var(--vw-light);">-</div>
-            <div class="label">Cliente</div>
-            <div id="det-cliente" class="value">-</div>
-            <div class="label">Matrícula</div>
-            <div id="det-mat" class="value" style="letter-spacing: 2px; font-size: 20px;">-</div>
-            <div class="label">Modelo</div>
-            <div id="det-modelo" class="value">-</div>
-        </div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <a id="btn-wa" class="btn" style="background: #25D366; padding: 15px; text-align: center; border-radius: 12px; text-decoration: none; color: white; font-weight: bold;"><i class="fab fa-whatsapp"></i> WhatsApp</a>
-            <a id="btn-tel" class="btn" style="background: var(--vw-light); padding: 15px; text-align: center; border-radius: 12px; text-decoration: none; color: #001E50; font-weight: bold;"><i class="fas fa-phone"></i> Llamar</a>
-        </div>
-    </section>
+    <nav class="nav-bar" id="main-nav" style="display: none;">
+        <a href="#" class="nav-btn active" onclick="showScreen('s-agenda')"><i class="fas fa-calendar-day fa-lg"></i><p>ENTREGAS</p></a>
+        <a href="#" class="nav-btn" onclick="showScreen('s-mapa')"><i class="fas fa-map-marked-alt fa-lg"></i><p>TALLER</p></a>
+    </nav>
 
     <script>
         const API = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
-        let user = "";
-        let entregas = [];
-        
-        // --- LOGICA NAVEGACION ---
-        function navTo(id) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            window.scrollTo(0,0);
-        }
+        let userActivo = "";
 
-        function switchTab(id, el) {
-            navTo(id);
-            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-            el.classList.add('active');
-        }
-
-        function login(n) {
-            user = n;
-            document.getElementById('welcome-msg').innerText = "Entregas " + n;
+        function login(name) {
+            userActivo = name;
             document.getElementById('s-login').classList.remove('active');
+            document.getElementById('s-agenda').classList.add('active');
             document.getElementById('main-nav').style.display = 'flex';
-            navTo('s-agenda');
-            cargarAgenda();
-            renderMap();
+            cargarDatos();
         }
 
-        // --- LOGICA ENTREGAS ---
-        function cargarAgenda() {
-            const list = document.getElementById('lista-entregas');
-            list.innerHTML = '<div style="text-align:center; padding:50px; opacity:0.5;">Cargando entregas...</div>';
-            fetch(`${API}?action=getAgenda&agente=${user}`)
-            .then(r => r.json())
-            .then(d => { entregas = d; renderEntregas(); });
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.currentTarget.classList.add('active');
         }
 
-        function renderEntregas() {
-            const list = document.getElementById('lista-entregas');
-            list.innerHTML = "";
-            entregas.forEach((item, i) => {
+        async function cargarDatos() {
+            const container = document.getElementById('lista-entregas');
+            container.innerHTML = "<p style='text-align:center; opacity:0.5'>Buscando en el Excel...</p>";
+            
+            try {
+                const resp = await fetch(`${API}?action=getAgenda&agente=${userActivo}`);
+                const datos = await resp.json();
+                renderizarTarjetas(datos);
+            } catch (e) {
+                container.innerHTML = "<p style='color:red'>Error de conexión</p>";
+            }
+        }
+
+        function renderizarTarjetas(datos) {
+            const container = document.getElementById('lista-entregas');
+            container.innerHTML = "";
+            
+            if (datos.length > 0) {
+                const f = new Date(datos[0].fechaHora);
+                document.getElementById('current-day-label').innerText = f.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+            }
+
+            datos.forEach(item => {
                 const f = new Date(item.fechaHora);
                 const hora = f.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-                const pedido = item.pedido === true || item.pedido === "true";
-                list.innerHTML += `
-                    <div class="delivery-card" onclick="verDetalle(${i})">
-                        <div class="date-box">
-                            <div style="font-size:9px; opacity:0.7;">${f.toLocaleDateString('es-ES',{day:'numeric', month:'short'})}</div>
-                            <div class="hour">${hora}</div>
+                const voClass = item.entregaVO === "SÍ" ? "vo-si" : "vo-no";
+                const voText = item.entregaVO === "SÍ" ? "⚠️ ENTREGA COCHE USADO" : "SIN ENTREGA DE USADO";
+                const tel = String(item.telefono || "").replace(/\s/g, '');
+
+                container.innerHTML += `
+                    <div class="car-card">
+                        <div class="card-top">
+                            <div class="delivery-time">${hora}</div>
+                            <div class="renting-tag">${item.renting || 'PARTICULAR'}</div>
                         </div>
-                        <div class="info-main">
-                            <div class="renting-label">${item.renting || 'PARTICULAR'}</div>
-                            <div class="model">${item.modelo}</div>
-                            <div style="font-size:12px; opacity:0.6;">${item.cliente}</div>
+                        <div class="card-body">
+                            <div class="data-label">Cliente / Conductor</div>
+                            <div class="data-value" style="font-size: 18px; color: var(--vw-light); margin-bottom:15px;">${item.cliente}</div>
+                            
+                            <div class="info-row">
+                                <div>
+                                    <div class="data-label">Modelo</div>
+                                    <div class="data-value">${item.modelo}</div>
+                                </div>
+                                <div>
+                                    <div class="data-label">Matrícula</div>
+                                    <div class="data-value" style="letter-spacing:1px">${item.matricula}</div>
+                                </div>
+                            </div>
+
+                            <div class="vin-box">
+                                <div class="data-label">Número de Bastidor (VIN)</div>
+                                <div class="data-value" style="font-family: monospace; font-size:13px; color: #aaa;">${item.bastidor || 'NO DISPONIBLE'}</div>
+                            </div>
+
+                            <div class="vo-indicator ${voClass}">${voText}</div>
                         </div>
-                        <i class="fas fa-circle" style="color:${pedido ? 'var(--success)' : 'var(--danger)'}; font-size:10px;"></i>
+                        <div class="card-actions">
+                            <a href="https://wa.me/34${tel}" class="btn-mini" style="background:#25D366"><i class="fab fa-whatsapp"></i> WHATSAPP</a>
+                            <a href="tel:${tel}" class="btn-mini" style="background:var(--vw-light); color:var(--vw-blue)"><i class="fas fa-phone"></i> LLAMAR</a>
+                        </div>
                     </div>
                 `;
-            });
-        }
-
-        function verDetalle(i) {
-            const item = entregas[i];
-            document.getElementById('det-renting').innerText = item.renting || "PARTICULAR";
-            document.getElementById('det-cliente').innerText = item.cliente;
-            document.getElementById('det-mat').innerText = item.matricula;
-            document.getElementById('det-modelo').innerText = item.modelo;
-            
-            const vo = document.getElementById('vo-alerta');
-            if(item.entregaVO && item.entregaVO.toString().toUpperCase() === "SÍ") {
-                vo.innerText = "⚠️ RECOGER COCHE USADO"; vo.style.background = "rgba(255,152,0,0.2)"; vo.style.color = "var(--warning)";
-            } else {
-                vo.innerText = "SIN ENTREGA DE USADO"; vo.style.background = "rgba(37,211,102,0.1)"; vo.style.color = "var(--success)";
-            }
-            
-            const tel = String(item.telefono || "").replace(/\s/g, '');
-            document.getElementById('btn-tel').href = "tel:" + tel;
-            document.getElementById('btn-wa').href = `https://wa.me/34${tel}`;
-
-            navTo('s-detail');
-        }
-
-        // --- LOGICA PLANO TALLER ---
-        const mapConfig = [
-            ...Array.from({length: 20}, (_, i) => ({ id: (12 + i).toString(), col: '1 / 6', row: `${i + 1} / ${i + 2}` })),
-            { id: '11', col: '10 / 16', row: '1 / 2' }, { id: '9', col: '10 / 16', row: '2 / 3' },
-            { id: '8', col: '10 / 16', row: '3 / 4' }, { id: '7', col: '10 / 16', row: '4 / 5' },
-            { id: '6', col: '10 / 16', row: '5 / 6' }, { id: '10', col: '16 / 22', row: '1 / 2' },
-            { id: '5', col: '16 / 22', row: '5 / 6' },
-            ...Array.from({length: 9}, (_, i) => ({ id: (50 - i).toString(), col: '10 / 16', row: `${7 + i} / ${8 + i}` })),
-            { id: '4', col: '22 / 25', row: '7 / 9' }, { id: '3', col: '22 / 25', row: '9 / 11' },
-            { id: '2', col: '22 / 25', row: '11 / 13' }, { id: '1', col: '22 / 25', row: '13 / 15' },
-            { id: '41', col: '8 / 10', row: '17 / 19' }, { id: '40', col: '10 / 13', row: '17 / 19' },
-            { id: '39', col: '13 / 16', row: '17 / 19' }, { id: '38', col: '16 / 19', row: '17 / 19' },
-            { id: '37', col: '19 / 22', row: '17 / 19' }, { id: '32', col: '8 / 10', row: '19 / 21' },
-            { id: '33', col: '10 / 13', row: '19 / 21' }, { id: '34', col: '13 / 16', row: '19 / 21' },
-            { id: '35', col: '16 / 19', row: '19 / 21' }, { id: '36', col: '19 / 22', row: '19 / 21' }
-        ];
-
-        let parkingData = JSON.parse(localStorage.getItem('parkingData')) || {};
-
-        function renderMap() {
-            const grid = document.getElementById('parking-grid');
-            grid.innerHTML = `
-                <div class="pasillo-visual" style="grid-column:6/10; grid-row:1/21; writing-mode: vertical-rl;">PASILLO CENTRAL</div>
-                <div class="pasillo-visual" style="grid-column:16/22; grid-row:7/16; background:#121a2d;">RAMPA</div>
-                <div class="pasillo-visual" style="grid-column:22/25; grid-row:5/7;">LLAVES</div>
-            `;
-            
-            mapConfig.forEach(c => {
-                const data = parkingData[c.id];
-                const div = document.createElement('div');
-                div.className = 'spot ' + (data ? 'occupied' : '');
-                if (data && (Date.now() - data.fechaEntrada > 432000000)) div.classList.add('warning');
-                div.id = 'plaza-' + c.id;
-                div.style.gridColumn = c.col; div.style.gridRow = c.row;
-                div.innerHTML = `<span>${c.id}</span><span style="font-size:7px;">${data ? data.matricula : ''}</span>`;
-                div.onclick = () => toggleSpot(c.id);
-                grid.appendChild(div);
-            });
-        }
-
-        function toggleSpot(id) {
-            const data = parkingData[id];
-            if(data) {
-                if(confirm("¿Quitar coche " + data.matricula + " de la plaza " + id + "?")) {
-                    delete parkingData[id];
-                    saveMap();
-                }
-            } else {
-                const mat = prompt("Matrícula para plaza " + id + ":");
-                if(mat) {
-                    parkingData[id] = { matricula: mat.toUpperCase(), fechaEntrada: Date.now() };
-                    saveMap();
-                }
-            }
-        }
-
-        function saveMap() {
-            localStorage.setItem('parkingData', JSON.stringify(parkingData));
-            renderMap();
-        }
-
-        function buscarEnMapa() {
-            const busqueda = document.getElementById('buscador-plazas').value.toUpperCase();
-            mapConfig.forEach(c => {
-                const el = document.getElementById('plaza-' + c.id);
-                if(busqueda && parkingData[c.id] && parkingData[c.id].matricula.includes(busqueda)) {
-                    el.style.border = "2px solid white"; el.style.transform = "scale(1.2)"; el.style.zIndex = "10";
-                } else {
-                    el.style.border = "none"; el.style.transform = "scale(1)"; el.style.zIndex = "1";
-                }
             });
         }
     </script>
