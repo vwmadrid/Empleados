@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>VW PRO | Garaje por Bastidor</title>
+    <title>VW PRO | Garaje Bastidor Completo</title>
     
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     
@@ -17,6 +17,7 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Segoe UI', Roboto, sans-serif; }
         body { margin: 0; background: var(--bg-dark); color: white; min-height: 100vh; padding-bottom: 90px; }
 
+        /* NAVEGACIÓN */
         .nav-bottom {
             position: fixed; bottom: 0; left: 0; right: 0; height: 75px;
             background: rgba(0, 10, 30, 0.95); backdrop-filter: blur(15px);
@@ -59,15 +60,17 @@
         .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; background: rgba(0,0,0,0.2); }
         .btn-act { padding: 12px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
-        /* GARAJE */
+        /* PLANO GARAJE */
         .map-wrapper { overflow-x: auto; padding: 10px; background: #050a15; border-radius: 12px; border: 1px solid var(--glass-border); }
         .map-grid { display: grid; grid-template-columns: repeat(24, 30px); grid-template-rows: repeat(20, 35px); gap: 3px; }
         .spot { 
-            background: var(--success); color: white; border-radius: 4px; font-size: 8px;
+            background: var(--success); color: white; border-radius: 4px; 
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             cursor: pointer; position: relative; font-weight: bold; border: 1px solid rgba(0,0,0,0.1);
+            overflow: hidden; text-align: center; line-height: 1;
         }
         .spot.occupied { background: var(--danger); }
+        .spot-vin-text { font-size: 7px; word-break: break-all; padding: 0 2px; margin-top: 5px; }
         .spot-num { position: absolute; top: 1px; left: 2px; font-size: 7px; opacity: 0.8; color: #fff; }
         .pasillo { background: #1a253a; color: #4e5d7a; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; text-align: center; }
 
@@ -79,7 +82,7 @@
 </head>
 <body>
 
-    <div id="auto-assign-bar">ASIGNANDO PLAZA BASTIDOR: <span id="target-vin"></span> <button onclick="cancelAssign()" style="background:var(--vw-blue); color:white; border:none; padding:2px 8px; border-radius:4px; margin-left:10px;">X</button></div>
+    <div id="auto-assign-bar">ASIGNANDO BASTIDOR: <span id="target-vin"></span> <button onclick="cancelAssign()" style="background:var(--vw-blue); color:white; border:none; padding:2px 8px; border-radius:4px; margin-left:10px;">CANCELAR</button></div>
 
     <nav class="nav-bottom" id="main-nav" style="display: none;">
         <div class="nav-item active" id="nav-agenda" onclick="switchTab('s-agenda')">
@@ -139,7 +142,7 @@
         function startAutoAssign(vin) {
             if(!vin || vin === 'NO DISPONIBLE') { alert("Este coche no tiene bastidor registrado."); return; }
             pendingVIN = vin.toUpperCase();
-            document.getElementById('target-vin').innerText = pendingVIN.slice(-6); // Mostrar últimos 6
+            document.getElementById('target-vin').innerText = pendingVIN;
             document.getElementById('auto-assign-bar').style.display = 'block';
             switchTab('s-mapa');
         }
@@ -151,7 +154,7 @@
 
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
-            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando datos...</p>';
+            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Sincronizando...</p>';
             try {
                 const r = await fetch(`${API_URL}?action=getAgenda&agente=${agente}`);
                 const datos = await r.json();
@@ -168,10 +171,10 @@
                     grupos[dia].forEach(coche => {
                         const hora = new Date(coche.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
                         const tel = String(coche.telefono || "").replace(/\s/g, '');
-                        const vin = coche.bastidor || 'NO DISPONIBLE';
+                        const vin = (coche.bastidor || 'NO DISPONIBLE').toUpperCase();
                         
                         let plazaAsignada = null;
-                        for(let id in parkingData) { if(parkingData[id].vin === vin.toUpperCase()) plazaAsignada = id; }
+                        for(let id in parkingData) { if(parkingData[id].vin === vin) plazaAsignada = id; }
 
                         lista.innerHTML += `
                             <div class="car-card">
@@ -236,16 +239,20 @@
                 div.className = 'spot ' + (data ? 'occupied' : '');
                 div.id = 'plaza-' + c.id;
                 div.style.gridColumn = c.col; div.style.gridRow = c.row;
-                // Mostrar últimos 6 dígitos del bastidor en el mapa
-                const displayVin = data ? data.vin.slice(-6) : '';
-                div.innerHTML = `<span class="spot-num">${c.id}</span>${displayVin}`;
+                
+                // Mostrar bastidor completo
+                const fullVin = data ? data.vin : '';
+                div.innerHTML = `
+                    <span class="spot-num">${c.id}</span>
+                    <div class="spot-vin-text">${fullVin}</div>
+                `;
                 
                 div.onclick = () => {
                     if(pendingVIN) {
                         parkingData[c.id] = { vin: pendingVIN, timestamp: Date.now() };
                         cancelAssign();
                     } else if(data) {
-                        if(confirm("Plaza " + c.id + "\nBastidor: " + data.vin + "\n\n¿Liberar plaza?")) delete parkingData[c.id];
+                        if(confirm("Plaza " + c.id + "\nBastidor completo: " + data.vin + "\n\n¿Liberar plaza?")) delete parkingData[c.id];
                     } else {
                         const vinManual = prompt("Introducir Bastidor manualmente:");
                         if(vinManual) parkingData[c.id] = { vin: vinManual.toUpperCase(), timestamp: Date.now() };
