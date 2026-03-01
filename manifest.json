@@ -1,19 +1,19 @@
 {
   "name": "VW PRO Castellana",
   "short_name": "VW PRO",
-  "start_url": "./index.html",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#000510",
   "theme_color": "#001E50",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "icono-192.png",
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Volkswagen_logo_2019.svg/192px-Volkswagen_logo_2019.svg.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icono-512.png",
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Volkswagen_logo_2019.svg/512px-Volkswagen_logo_2019.svg.png",
       "sizes": "512x512",
       "type": "image/png"
     }
