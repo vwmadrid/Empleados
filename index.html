@@ -14,8 +14,9 @@
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Segoe UI', Roboto, sans-serif; }
         body { margin: 0; background: var(--bg-dark); color: white; min-height: 100vh; padding-bottom: 90px; }
         
+        /* Navegación Inferior */
         .nav-bottom { position: fixed; bottom: 0; left: 0; right: 0; height: 75px; background: rgba(0, 10, 30, 0.95); backdrop-filter: blur(15px); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--glass-border); z-index: 1000; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0.4; color: white; cursor: pointer; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0.4; color: white; text-decoration: none; cursor: pointer; }
         .nav-item.active { opacity: 1; color: var(--vw-light); }
         .nav-item i { font-size: 20px; }
         .nav-item span { font-size: 10px; font-weight: bold; }
@@ -24,6 +25,7 @@
         .screen.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
+        /* Estilos Agenda */
         .day-divider { background: linear-gradient(90deg, var(--vw-blue), transparent); padding: 10px 15px; margin: 25px 0 10px 0; border-left: 4px solid var(--vw-light); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
         .day-divider h2 { margin: 0; font-size: 14px; text-transform: uppercase; font-weight: 800; }
 
@@ -31,26 +33,38 @@
         .card-header { padding: 12px 15px; background: rgba(255,255,255,0.03); display: flex; justify-content: space-between; align-items: center; }
         .delivery-hour { font-size: 24px; font-weight: 800; color: var(--vw-light); }
         .status-badge { font-size: 9px; padding: 4px 8px; border-radius: 5px; font-weight: bold; }
+        .pedido-si { background: #004a99; color: white; }
+        .pedido-no { background: #444; color: #aaa; }
 
         .card-content { padding: 15px; }
-        .vin-box { background: rgba(0,0,0,0.4); padding: 8px; border-radius: 8px; margin: 10px 0; border: 1px solid rgba(255,255,255,0.1); font-family: monospace; font-size: 11px; color: var(--vw-light); }
-        
+        .vin-box { background: rgba(0,0,0,0.4); padding: 8px; border-radius: 8px; margin: 10px 0; border: 1px solid rgba(255,255,255,0.1); }
+        .vin-text { font-family: monospace; font-size: 11px; color: var(--vw-light); word-break: break-all; }
+
         .extra-data { display: flex; gap: 10px; margin-top: 10px; }
         .data-tag { flex: 1; padding: 8px; border-radius: 8px; font-size: 10px; text-align: center; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
+        .tag-blue { background: rgba(0, 176, 240, 0.1); color: var(--vw-light); border-color: var(--vw-light); cursor: pointer; }
 
         .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; background: rgba(0,0,0,0.2); }
         .btn-act { padding: 12px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; }
 
-        /* MAPA AVANZADO RECOMPUESTO */
+        /* Estilos Mapa Garaje */
         .map-wrapper { overflow-x: auto; padding: 10px; background: #050a15; border-radius: 12px; border: 1px solid var(--glass-border); }
         .map-grid { display: grid; grid-template-columns: repeat(24, 30px); grid-template-rows: repeat(20, 35px); gap: 3px; }
-        .spot { background: var(--success); color: white; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; font-weight: bold; border: 1px solid rgba(0,0,0,0.1); overflow: hidden; }
+        .spot { background: var(--success); color: white; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; font-weight: bold; border: 1px solid rgba(0,0,0,0.1); overflow: hidden; text-align: center; line-height: 1; }
         .spot.occupied { background: var(--danger); }
+        .spot-vin-text { font-size: 6px; word-break: break-all; padding: 0 1px; margin-top: 5px; font-family: monospace; }
         .spot-num { position: absolute; top: 1px; left: 2px; font-size: 7px; opacity: 0.8; }
-        .pasillo { background: #1a253a; color: #4e5d7a; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; }
+        .pasillo { background: #1a253a; color: #4e5d7a; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; text-align: center; }
+        
+        #auto-assign-bar { position: fixed; top: 0; left: 0; right: 0; background: var(--vw-light); color: var(--vw-blue); padding: 12px; text-align: center; font-weight: bold; font-size: 12px; z-index: 2000; display: none; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
+
+    <div id="auto-assign-bar">
+        ASIGNANDO BASTIDOR: <span id="target-vin"></span> 
+        <button onclick="cancelAssign()" style="background:var(--vw-blue); color:white; border:none; padding:4px 10px; border-radius:5px; margin-left:10px;">CANCELAR</button>
+    </div>
 
     <nav class="nav-bottom" id="main-nav" style="display: none;">
         <div class="nav-item active" id="nav-agenda" onclick="switchTab('s-agenda')"><i class="fas fa-list-ul"></i><span>Agenda</span></div>
@@ -65,26 +79,35 @@
     </section>
 
     <section id="s-agenda" class="screen">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h1 id="user-title" style="font-size:18px; margin:0;">ENTREGAS</h1>
+            <i class="fas fa-sync-alt" onclick="cargarAgenda()" style="padding:10px; cursor:pointer;"></i>
+        </div>
         <div id="contenedor-agenda"></div>
     </section>
 
     <section id="s-mapa" class="screen">
-        <h2 style="font-size:18px; margin-bottom:10px;">Plano Garaje</h2>
+        <h2 style="font-size:18px; margin-bottom:10px;">Plano del Garaje</h2>
+        <input type="text" id="busc-map" placeholder="Buscar bastidor en mapa..." onkeyup="buscarEnMapa()" style="width:100%; padding:12px; border-radius:10px; background:var(--glass); border:1px solid var(--glass-border); color:white; margin-bottom:15px;">
         <div class="map-wrapper">
             <div class="map-grid" id="parking-grid"></div>
         </div>
     </section>
 
     <script>
+        // PEGA AQUÍ TU URL DE GOOGLE SCRIPT EXACTAMENTE COMO LA TENÍAS AL PRINCIPIO
         const API_URL = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
+        
         let agente = "";
-        let parkingData = JSON.parse(localStorage.getItem('parking_pro')) || {};
+        let parkingData = JSON.parse(localStorage.getItem('parking_vw_pro')) || {};
+        let pendingVIN = null;
 
         function iniciar(n) {
             agente = n;
             document.getElementById('s-login').classList.remove('active');
             document.getElementById('s-agenda').classList.add('active');
             document.getElementById('main-nav').style.display = 'flex';
+            document.getElementById('user-title').innerText = "ENTREGAS: " + agente;
             cargarAgenda();
             renderMap();
         }
@@ -94,43 +117,103 @@
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             document.getElementById('nav-' + id.split('-')[1]).classList.add('active');
+            window.scrollTo(0,0);
+        }
+
+        function startAutoAssign(vin) {
+            if(!vin || vin === 'NO DISPONIBLE') { alert("Este vehículo no tiene bastidor."); return; }
+            pendingVIN = vin.toUpperCase().trim();
+            document.getElementById('target-vin').innerText = pendingVIN;
+            document.getElementById('auto-assign-bar').style.display = 'block';
+            switchTab('s-mapa');
+        }
+
+        function cancelAssign() {
+            pendingVIN = null;
+            document.getElementById('auto-assign-bar').style.display = 'none';
         }
 
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
-            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando entregas...</p>';
+            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando entregas de ' + agente + '...</p>';
+            
             try {
-                // USAMOS EL MÉTODO DE CONEXIÓN QUE FUNCIONA CON MANUEL
-                const res = await fetch(API_URL + "?action=getAgenda&agente=" + agente);
-                const datos = await res.json();
+                // ESTA ES LA CONEXIÓN ORIGINAL INTOCABLE
+                const response = await fetch(API_URL + "?action=getAgenda&agente=" + agente);
+                const datos = await response.json();
                 
-                lista.innerHTML = "";
+                if (!datos || datos.length === 0) {
+                    lista.innerHTML = `<p style="text-align:center; padding:40px;">No hay entregas para ${agente}.</p>`;
+                    return;
+                }
+
+                // Agrupamos los datos por día
+                const grupos = {};
                 datos.forEach(c => {
-                    lista.innerHTML += `
-                        <div class="car-card">
-                            <div class="card-header">
-                                <span class="delivery-hour">${c.cliente}</span>
-                                <span class="status-badge" style="background:${c.pedido === 'SÍ' ? '#004a99' : '#444'}">PEDIDO: ${c.pedido}</span>
-                            </div>
-                            <div class="card-content">
-                                <div style="font-size:16px; margin-bottom:5px;">${c.modelo} - <b>${c.matricula}</b></div>
-                                <div class="vin-box">${c.bastidor}</div>
-                                <div class="extra-data">
-                                    <div class="data-tag" style="color:${c.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}">VO: ${c.entregaVO}</div>
-                                </div>
-                            </div>
-                            <div class="actions">
-                                <a href="tel:${c.telefono}" class="btn-act" style="background:var(--vw-blue); border:1px solid var(--vw-light)"><i class="fas fa-phone"></i> LLAMAR</a>
-                                <a href="https://wa.me/34${c.telefono}" class="btn-act" style="background:#25D366"><i class="fab fa-whatsapp"></i> WHATSAPP</a>
-                            </div>
-                        </div>`;
+                    let fechaStr = "SIN FECHA";
+                    if (c.fechaHora) {
+                        const d = new Date(c.fechaHora);
+                        if (!isNaN(d)) fechaStr = d.toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long' });
+                    }
+                    if (!grupos[fechaStr]) grupos[fechaStr] = [];
+                    grupos[fechaStr].push(c);
                 });
+
+                lista.innerHTML = "";
+                
+                // Pintamos las tarjetas por cada día
+                for (const dia in grupos) {
+                    lista.innerHTML += `<div class="day-divider"><h2>${dia}</h2></div>`;
+                    
+                    grupos[dia].forEach(c => {
+                        let horaStr = "--:--";
+                        if (c.fechaHora) {
+                            const d = new Date(c.fechaHora);
+                            if (!isNaN(d)) horaStr = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                        }
+                        
+                        const vin = (c.bastidor || 'NO DISPONIBLE').toUpperCase().trim();
+                        
+                        // Buscamos si el coche ya está en el mapa
+                        let plazaAsignada = null;
+                        for(let id in parkingData) { if(parkingData[id].vin === vin) plazaAsignada = id; }
+
+                        lista.innerHTML += `
+                            <div class="car-card">
+                                <div class="card-header">
+                                    <span class="delivery-hour">${horaStr}</span>
+                                    <span class="status-badge ${c.pedido === 'SÍ' ? 'pedido-si' : 'pedido-no'}">${c.pedido === 'SÍ' ? 'PEDIDO' : 'NO PEDIDO'}</span>
+                                </div>
+                                <div class="card-content">
+                                    <div style="font-size:18px; font-weight:bold; margin-bottom:10px;">${c.cliente}</div>
+                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                                        <div><div style="font-size:9px; opacity:0.5;">MODELO</div><div style="font-size:13px;">${c.modelo}</div></div>
+                                        <div><div style="font-size:9px; opacity:0.5;">MATRÍCULA</div><div style="font-size:13px; font-weight:bold;">${c.matricula}</div></div>
+                                    </div>
+                                    <div class="vin-box">
+                                        <div style="font-size:9px; opacity:0.5;">BASTIDOR (VIN)</div>
+                                        <div class="vin-text">${vin}</div>
+                                    </div>
+                                    <div class="extra-data">
+                                        <div class="data-tag" style="color:${c.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}; border-color:${c.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}">VO: ${c.entregaVO === 'SÍ' ? 'SÍ' : 'NO'}</div>
+                                        <div class="data-tag tag-blue" onclick="startAutoAssign('${vin}')">
+                                            <i class="fas fa-map-marker-alt"></i> ${plazaAsignada ? 'PLAZA ' + plazaAsignada : 'ASIGNAR PLAZA'}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="actions">
+                                    <a href="tel:${c.telefono}" class="btn-act" style="background:var(--vw-blue); border:1px solid var(--vw-light)"><i class="fas fa-phone"></i> LLAMAR</a>
+                                    <a href="https://wa.me/34${c.telefono}" class="btn-act" style="background:#25D366"><i class="fab fa-whatsapp"></i> WHATSAPP</a>
+                                </div>
+                            </div>`;
+                    });
+                }
             } catch (e) {
-                lista.innerHTML = "Error de conexión con el Excel";
+                lista.innerHTML = '<p style="color:red; text-align:center; padding:20px;">Error de conexión. Verifica la URL del script.</p>';
             }
         }
 
-        // CONFIGURACIÓN REAL DEL GARAJE (GRID 24x20)
+        // --- CONFIGURACIÓN DEL MAPA DEL GARAJE ---
         const mapConfig = [
             ...Array.from({length: 20}, (_, i) => ({ id: (12 + i).toString(), col: '1 / 6', row: `${i + 1} / ${i + 2}` })),
             { id: '11', col: '10 / 16', row: '1 / 2' }, { id: '9', col: '10 / 16', row: '2 / 3' },
@@ -149,20 +232,48 @@
 
         function renderMap() {
             const grid = document.getElementById('parking-grid');
-            grid.innerHTML = `<div class="pasillo" style="grid-column:6/10; grid-row:1/21; writing-mode: vertical-rl;">PASILLO CENTRAL</div>`;
+            grid.innerHTML = `
+                <div class="pasillo" style="grid-column:6/10; grid-row:1/21; writing-mode: vertical-rl;">PASILLO CENTRAL</div>
+                <div class="pasillo" style="grid-column:16/22; grid-row:7/16; background:#121a2d;">RAMPA</div>
+            `;
+            
             mapConfig.forEach(c => {
-                const ocupado = parkingData[c.id];
+                const data = parkingData[c.id];
                 const div = document.createElement('div');
-                div.className = 'spot ' + (ocupado ? 'occupied' : '');
+                div.className = 'spot ' + (data ? 'occupied' : '');
+                div.id = 'plaza-' + c.id;
                 div.style.gridColumn = c.col; div.style.gridRow = c.row;
-                div.innerHTML = `<span class="spot-num">${c.id}</span><div style="font-size:5px">${ocupado ? ocupado.slice(-6) : ''}</div>`;
+                
+                const vinMostrado = data ? data.vin : '';
+                div.innerHTML = `<span class="spot-num">${c.id}</span><div class="spot-vin-text">${vinMostrado}</div>`;
+                
                 div.onclick = () => {
-                    if(ocupado) { if(confirm("Liberar plaza " + c.id + "?")) delete parkingData[c.id]; }
-                    else { const v = prompt("Bastidor:"); if(v) parkingData[c.id] = v; }
-                    localStorage.setItem('parking_pro', JSON.stringify(parkingData));
-                    renderMap();
+                    if(pendingVIN) {
+                        parkingData[c.id] = { vin: pendingVIN };
+                        cancelAssign();
+                    } else if(data) {
+                        if(confirm("Liberar plaza " + c.id + "\nBastidor: " + data.vin)) delete parkingData[c.id];
+                    } else {
+                        const v = prompt("Aparcar - Introduce Bastidor:");
+                        if(v) parkingData[c.id] = { vin: v.toUpperCase().trim() };
+                    }
+                    localStorage.setItem('parking_vw_pro', JSON.stringify(parkingData));
+                    renderMap(); 
+                    cargarAgenda();
                 };
                 grid.appendChild(div);
+            });
+        }
+
+        function buscarEnMapa() {
+            const b = document.getElementById('busc-map').value.toUpperCase();
+            mapConfig.forEach(c => {
+                const el = document.getElementById('plaza-' + c.id);
+                if(b && parkingData[c.id] && parkingData[c.id].vin.includes(b)) {
+                    el.style.border = "2px solid white"; el.style.boxShadow = "0 0 10px white"; el.style.zIndex = "10";
+                } else { 
+                    el.style.border = "1px solid rgba(0,0,0,0.1)"; el.style.boxShadow = "none"; el.style.zIndex = "1";
+                }
             });
         }
     </script>
