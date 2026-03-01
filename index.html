@@ -87,7 +87,6 @@
     </section>
 
     <script>
-        // *** VERIFICA ESTA URL CON LA QUE TIENES EN GOOGLE SCRIPTS ***
         const API_URL = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         
         let agente = "";
@@ -95,7 +94,7 @@
         let pendingVIN = null;
 
         function iniciar(n) {
-            agente = n.trim().toUpperCase(); // Limpia espacios y pasa a mayúsculas
+            agente = n.trim().toUpperCase();
             document.getElementById('s-login').classList.remove('active');
             document.getElementById('s-agenda').classList.add('active');
             document.getElementById('main-nav').style.display = 'flex';
@@ -126,15 +125,20 @@
 
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
-            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Sincronizando ' + agente + '...</p>';
+            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Sincronizando con Google...</p>';
             
             try {
-                // Forzamos el nombre a mayúsculas y quitamos espacios en la URL
-                const r = await fetch(`${API_URL}?action=getAgenda&agente=${encodeURIComponent(agente)}`);
-                const datos = await r.json();
+                // CAMBIO CLAVE: Pedimos todos los datos y filtramos aquí
+                const r = await fetch(`${API_URL}?action=getAgenda`);
+                const todosLosDatos = await r.json();
+                
+                // Filtrado manual por nombre (ignorando mayúsculas y espacios)
+                const datos = todosLosDatos.filter(item => {
+                    return item.entregador && item.entregador.toString().toUpperCase().trim() === agente;
+                });
                 
                 if (!datos || datos.length === 0) {
-                    lista.innerHTML = '<p style="text-align:center; padding:40px;">No hay datos para ' + agente + ' en el Excel.</p>';
+                    lista.innerHTML = `<p style="text-align:center; padding:40px; opacity:0.6;">No hay entregas asignadas a ${agente} hoy.</p>`;
                     return;
                 }
 
@@ -152,7 +156,6 @@
                         const hora = new Date(coche.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
                         const tel = String(coche.telefono || "").replace(/\s/g, '');
                         const vin = (coche.bastidor || 'NO DISPONIBLE').toUpperCase().trim();
-                        
                         let plazaAsignada = null;
                         for(let id in parkingData) { if(parkingData[id].vin === vin) plazaAsignada = id; }
 
@@ -187,7 +190,8 @@
                     });
                 }
             } catch (e) {
-                lista.innerHTML = '<p style="color:red; text-align:center; padding:20px;">Error de conexión.<br>Verifica la URL del script o que Manuel tenga datos hoy.</p>';
+                console.error(e);
+                lista.innerHTML = '<p style="color:red; text-align:center; padding:20px;">Error al conectar con Google Sheets.<br>Comprueba la URL de la API.</p>';
             }
         }
 
