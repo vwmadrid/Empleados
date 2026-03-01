@@ -86,7 +86,7 @@
             
             <div style="margin: 15px 0; font-size: 12px; opacity: 0.5;">O ESCRÍBELO A MANO</div>
             
-            <input type="text" id="modal-vin-input" placeholder="Escribe el bastidor..." style="width:100%; padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(0,0,0,0.5); color:white; font-size:16px; margin-bottom:15px; text-align:center; text-transform:uppercase;">
+            <input type="text" id="modal-vin-input" placeholder="Últimos 8 caracteres..." style="width:100%; padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.2); background:rgba(0,0,0,0.5); color:white; font-size:16px; margin-bottom:15px; text-align:center; text-transform:uppercase;">
             
             <button onclick="guardarPlazaManual()" style="width:100%; padding:15px; background:var(--success); color:white; border:none; border-radius:10px; font-weight:bold; margin-bottom:10px; font-size:14px;">GUARDAR BASTIDOR</button>
             
@@ -145,8 +145,8 @@
         let cochesEntregados = JSON.parse(localStorage.getItem('entregados_vw')) || [];
         let esSemat = false;
 
-        // --- SISTEMA DE CÁMARA ESCÁNER ---
-        let html5QrcodeScanner = null;
+        // --- SISTEMA DE CÁMARA TRASERA REVISADO ---
+        let html5QrCode = null;
         let plazaDestino = null;
 
         function abrirModalAparcar(idPlaza) {
@@ -160,30 +160,53 @@
 
         function cerrarModalAparcar() {
             document.getElementById('modal-aparcar').style.display = 'none';
-            if (html5QrcodeScanner) {
-                html5QrcodeScanner.clear().catch(e => console.error(e));
-                html5QrcodeScanner = null;
+            if (html5QrCode && html5QrCode.isScanning) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                }).catch(e => console.error(e));
             }
         }
 
         function iniciarEscaner() {
             document.getElementById('btn-scan').style.display = 'none';
             document.getElementById('reader').style.display = 'block';
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 100} }, false);
-            html5QrcodeScanner.render(
-                function(decodedText) { // Éxito
-                    document.getElementById('modal-vin-input').value = decodedText;
-                    if (html5QrcodeScanner) { html5QrcodeScanner.clear(); html5QrcodeScanner = null; }
-                    document.getElementById('reader').style.display = 'none';
-                    // Al escanear con éxito, lo guardamos automáticamente (Magia pura)
-                    guardarPlazaManual(); 
-                }, 
-                function(error) { /* Ignorar errores de lectura en proceso */ }
-            );
+            
+            // Usamos Html5Qrcode directo para forzar la cámara TRASERA
+            html5QrCode = new Html5Qrcode("reader");
+            
+            html5QrCode.start(
+                { facingMode: "environment" }, // Magia: Fuerza la cámara principal (trasera)
+                { fps: 10, qrbox: { width: 250, height: 100 } },
+                function(decodedText) {
+                    // ÉXITO AL LEER
+                    html5QrCode.stop().then(() => {
+                        document.getElementById('reader').style.display = 'none';
+                        document.getElementById('btn-scan').style.display = 'block';
+                        
+                        // Recortamos a los últimos 8 caracteres
+                        let texto = decodedText.toUpperCase().replace(/\s/g, '');
+                        document.getElementById('modal-vin-input').value = texto;
+                        
+                        guardarPlazaManual(); 
+                    }).catch(err => console.error(err));
+                },
+                function(error) { /* Ignorar errores mientras intenta enfocar */ }
+            ).catch(err => {
+                alert("Error al iniciar la cámara. Comprueba los permisos.");
+                document.getElementById('btn-scan').style.display = 'block';
+                document.getElementById('reader').style.display = 'none';
+            });
         }
 
         function guardarPlazaManual() {
-            const v = document.getElementById('modal-vin-input').value.toUpperCase().trim();
+            // Cogemos el texto de la caja (sea escrito o escaneado)
+            let v = document.getElementById('modal-vin-input').value.toUpperCase().replace(/\s/g, '');
+            
+            // MAGIA: Nos quedamos SOLAMENTE con los últimos 8 caracteres (2 letras, 6 números)
+            if(v.length >= 8) {
+                v = v.slice(-8);
+            }
+
             if(v) {
                 cerrarModalAparcar();
                 checkAndMove(v, plazaDestino);
@@ -208,7 +231,7 @@
             }
         }
 
-        // --- LOGIN COMERCIALES ---
+        // --- RESTO DE LA APP (LOGIN, AGENDA, MAPA) ---
         function iniciar(n) {
             agente = n;
             esSemat = false;
@@ -220,21 +243,19 @@
             sincronizarTodo();
         }
 
-        // --- LOGIN SEMAT (SOLO GARAJE) ---
         function iniciarSemat() {
             agente = "SEMAT";
             esSemat = true;
             document.getElementById('s-login').classList.remove('active');
             document.getElementById('s-mapa').classList.add('active');
-            document.getElementById('main-nav').style.display = 'none'; // Fuera agenda
+            document.getElementById('main-nav').style.display = 'none'; 
             document.getElementById('titulo-mapa').innerText = "GARAJE SEMAT";
-            
             renderMap();
-            sincronizarTodo(); // Carga solo el garaje
+            sincronizarTodo(); 
         }
 
         function switchTab(id) {
-            if(esSemat) return; // SEMAT no puede cambiar de pestaña
+            if(esSemat) return; 
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             document.getElementById(id).classList.add('active');
@@ -245,18 +266,18 @@
         async function sincronizarTodo() {
             document.getElementById('loading-map').style.display = 'block';
             
-            if(!esSemat) cargarAgenda(); // SEMAT no carga la agenda, se ahorra datos
+            if(!esSemat) cargarAgenda(); 
 
             try {
                 const resGaraje = await fetch(API_GARAJE + "?action=getParking&t=" + Date.now());
                 parkingData = await resGaraje.json();
-            } catch (e) { console.error("Fallo al cargar garaje", e); }
+            } catch (e) { console.error("Fallo garaje", e); }
 
             if(!esSemat) {
                 try {
                     const resNotas = await fetch(API_GARAJE + "?action=getNotas&t=" + Date.now());
                     notasData = await resNotas.json();
-                } catch (e) { console.error("Fallo al cargar notas", e); }
+                } catch (e) { console.error("Fallo notas", e); }
             }
 
             renderMap();
@@ -288,7 +309,7 @@
                 try {
                     const urlSegura = API_GARAJE + "?action=setNota&vin=" + encodeURIComponent(vin) + "&nota=" + encodeURIComponent(nuevaNota) + "&t=" + Date.now();
                     fetch(urlSegura, { method: 'GET', mode: 'cors' });
-                } catch (e) { alert("Error subiendo la nota a la nube."); }
+                } catch (e) {}
             }
         }
 
@@ -333,7 +354,7 @@
         }
 
         async function cargarAgenda() {
-            if(esSemat) return; // Seguridad extra
+            if(esSemat) return; 
             const lista = document.getElementById('contenedor-agenda');
             if(lista.innerHTML === "") lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando entregas de ' + agente + '...</p>';
             
@@ -369,7 +390,13 @@
                             if (!isNaN(d)) horaStr = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
                         }
                         
-                        const vin = String(c.bastidor || 'NO DISPONIBLE').toUpperCase().trim();
+                        // En la agenda, también forzamos a mostrar solo 8 caracteres si viene muy largo de Excel
+                        let vinOriginal = String(c.bastidor || 'NO DISPONIBLE').toUpperCase().replace(/\s/g, '');
+                        let vin = vinOriginal;
+                        if(vin !== 'NODISPONIBLE' && vin.length >= 8) {
+                            vin = vin.slice(-8);
+                        }
+
                         const pedido = String(c.pedido || '').toUpperCase().trim();
                         const vo = String(c.entregaVO || '').toUpperCase().trim();
                         const tel = String(c.telefono || '').replace(/\s/g, '');
@@ -474,7 +501,6 @@
                     } else if(data) {
                         if(confirm("¿Liberar plaza " + c.id + "?\nBastidor: " + data.vin)) actualizarPlazaNube(c.id, "");
                     } else {
-                        // AQUÍ ABRIMOS LA MAGIA DEL ESCÁNER EN VEZ DEL PROMPT ABURRIDO
                         abrirModalAparcar(c.id);
                     }
                 };
