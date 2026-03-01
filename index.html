@@ -42,7 +42,6 @@
         .data-tag { flex: 1; padding: 8px; border-radius: 8px; font-size: 10px; text-align: center; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
         .tag-blue { background: rgba(0, 176, 240, 0.1); color: var(--vw-light); border-color: var(--vw-light); cursor: pointer; }
 
-        /* NUEVO: ESTILO PARA LA CAJA DE NOTAS */
         .nota-box { margin-top: 12px; background: rgba(0,0,0,0.4); border: 1px dashed rgba(255,255,255,0.2); border-radius: 8px; padding: 10px; }
         .nota-header { display: flex; justify-content: space-between; font-size: 9px; opacity: 0.8; margin-bottom: 5px; font-weight: bold; }
         .nota-content { font-size: 11px; color: #eee; white-space: pre-wrap; min-height: 15px; }
@@ -111,13 +110,13 @@
     </section>
 
     <script>
-        // PEGA AQUÍ TUS DOS URLs
+        // ¡RECUERDA PEGAR AQUÍ TUS 2 URLs!
         const API_AGENDA = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         const API_GARAJE = "https://script.google.com/macros/s/AKfycbwb_92nWXbKGNew3vlaj8lWHk2rn65njl_6Z5T2BorpcfyGpWwwmSO1SH6DSyYbBm8bLw/exec";
         
         let agente = "";
         let parkingData = {}; 
-        let notasData = {}; // ¡NUEVO! Aquí guardamos las notas
+        let notasData = {}; 
         let pendingVIN = null;
         let cochesEntregados = JSON.parse(localStorage.getItem('entregados_vw')) || [];
 
@@ -140,23 +139,28 @@
             window.scrollTo(0,0);
         }
 
-        // --- GARAJE Y NOTAS EN LA NUBE ---
+        // --- GARAJE Y NOTAS EN LA NUBE (AHORA BLINDADO ANTI-CUELGUES) ---
         async function sincronizarTodo() {
             document.getElementById('loading-map').style.display = 'block';
+            
+            // 1. CARGAMOS LA AGENDA INMEDIATAMENTE (Nunca se va a colgar)
+            cargarAgenda();
+
+            // 2. CARGAMOS EL GARAJE DE FONDO
             try {
-                // Hacemos 3 cosas a la vez: Bajar el garaje, bajar las notas, y bajar tu agenda
-                const [resGaraje, resNotas] = await Promise.all([
-                    fetch(API_GARAJE + "?action=getParking&t=" + Date.now()),
-                    fetch(API_GARAJE + "?action=getNotas&t=" + Date.now())
-                ]);
+                const resGaraje = await fetch(API_GARAJE + "?action=getParking&t=" + Date.now());
                 parkingData = await resGaraje.json();
+            } catch (e) { console.error("Fallo al cargar garaje", e); }
+
+            // 3. CARGAMOS LAS NOTAS DE FONDO
+            try {
+                const resNotas = await fetch(API_GARAJE + "?action=getNotas&t=" + Date.now());
                 notasData = await resNotas.json();
-                
-                renderMap();
-                cargarAgenda(); 
-            } catch (e) {
-                console.error("Error sincronizando:", e);
-            }
+            } catch (e) { console.error("Fallo al cargar notas", e); }
+
+            // Refrescamos todo visualmente cuando llega
+            renderMap();
+            cargarAgenda(); 
             document.getElementById('loading-map').style.display = 'none';
         }
 
@@ -173,15 +177,14 @@
             } catch (e) {}
         }
 
-        // ¡NUEVO! GUARDAR NOTAS COMPARTIDAS
         async function editarNota(vin) {
             if(!vin || vin === 'NO DISPONIBLE') return;
             const notaActual = notasData[vin] || "";
             const nuevaNota = prompt("Escribe una nota para el bastidor " + vin + " (la verán tus compañeros):", notaActual);
 
-            if (nuevaNota !== null) { // Si no le dio a cancelar
+            if (nuevaNota !== null) {
                 notasData[vin] = nuevaNota;
-                cargarAgenda(); // Repintamos la tarjeta para que se vea
+                cargarAgenda(); 
                 
                 try {
                     const urlSegura = API_GARAJE + "?action=setNota&vin=" + encodeURIComponent(vin) + "&nota=" + encodeURIComponent(nuevaNota) + "&t=" + Date.now();
@@ -233,7 +236,7 @@
             }
         }
 
-        // --- AGENDA ---
+        // --- AGENDA BLINDADA ---
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
             if(lista.innerHTML === "") lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando entregas de ' + agente + '...</p>';
@@ -282,7 +285,6 @@
                         const isEntregado = cochesEntregados.includes(vin);
                         const claseEntregado = isEntregado ? 'entregado-card' : '';
                         
-                        // Miramos si este coche tiene alguna nota guardada
                         const notaDelCoche = notasData[vin] ? notasData[vin] : '<i style="opacity:0.4">Añadir observaciones...</i>';
 
                         lista.innerHTML += `
