@@ -91,20 +91,20 @@
         </div>
         <input type="text" id="busc-map" placeholder="Buscar bastidor en mapa..." onkeyup="buscarEnMapa()" style="width:100%; padding:12px; border-radius:10px; background:var(--glass); border:1px solid var(--glass-border); color:white; margin-bottom:15px;">
         <div class="map-wrapper">
-            <div id="loading-map" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; font-weight:bold; color:var(--vw-light); display:none;">
-                <i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Sincronizando garaje...
+            <div id="loading-map" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; font-weight:bold; color:var(--vw-light); display:none; z-index: 10;">
+                <i class="fas fa-spinner fa-spin fa-2x"></i><br><br>Conectando...
             </div>
             <div class="map-grid" id="parking-grid"></div>
         </div>
     </section>
 
     <script>
-        // TUS DOS URLs (AGENDA INTOCABLE Y EL NUEVO GARAJE EN LA NUBE)
+        // PEGA AQUÍ TUS DOS URLs
         const API_AGENDA = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         const API_GARAJE = "https://script.google.com/macros/s/AKfycbwb_92nWXbKGNew3vlaj8lWHk2rn65njl_6Z5T2BorpcfyGpWwwmSO1SH6DSyYbBm8bLw/exec";
         
         let agente = "";
-        let parkingData = {}; // Ahora arranca vacío, se llena desde la nube
+        let parkingData = {}; 
         let pendingVIN = null;
 
         function iniciar(n) {
@@ -114,7 +114,9 @@
             document.getElementById('main-nav').style.display = 'flex';
             document.getElementById('user-title').innerText = "ENTREGAS: " + agente;
             
-            // Cargamos ambas cosas a la vez al arrancar
+            // DIBUJAMOS EL MAPA AL INSTANTE (Para que no desaparezca nunca)
+            renderMap();
+            // LUEGO PEDIMOS LOS DATOS
             sincronizarTodo();
         }
 
@@ -131,14 +133,14 @@
             cargarAgenda();
         }
 
-        // --- FUNCIONES GARAJE EN LA NUBE ---
+        // --- GARAJE EN LA NUBE ---
         async function cargarGarajeNube() {
             document.getElementById('loading-map').style.display = 'block';
             try {
                 const response = await fetch(API_GARAJE + "?action=getParking");
                 parkingData = await response.json();
                 renderMap();
-                cargarAgenda(); // Repintamos la agenda para que salga el botón "PLAZA X" actualizado
+                cargarAgenda(); // Repinta la agenda para actualizar los botones azules
             } catch (e) {
                 console.error("Error cargando garaje nube:", e);
             }
@@ -146,7 +148,7 @@
         }
 
         async function actualizarPlazaNube(idPlaza, vin) {
-            // Actualización visual inmediata para que no haya que esperar (Efecto WOW)
+            // Actualización visual inmediata para el usuario
             if(vin) {
                 parkingData[idPlaza] = { vin: vin };
             } else {
@@ -155,11 +157,11 @@
             renderMap();
             cargarAgenda();
 
-            // Enviamos el dato a la nube de fondo
+            // Guardamos en la nube en segundo plano
             try {
                 await fetch(API_GARAJE + "?action=setParking&plaza=" + idPlaza + "&vin=" + vin);
             } catch (e) {
-                alert("Hubo un error guardando la plaza en la nube. Revisa tu conexión.");
+                alert("Aviso: Fallo de red. El coche no se ha guardado en la nube para tus compañeros.");
             }
         }
 
@@ -176,13 +178,12 @@
             document.getElementById('auto-assign-bar').style.display = 'none';
         }
 
-        // --- FUNCIONES AGENDA ORIGINAL ---
+        // --- AGENDA ORIGINAL ---
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
             if(lista.innerHTML === "") lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando entregas de ' + agente + '...</p>';
             
             try {
-                // LA CONEXIÓN ORIGINAL INTOCABLE
                 const response = await fetch(API_AGENDA + "?action=getAgenda&agente=" + agente);
                 const datos = await response.json();
                 
@@ -214,7 +215,6 @@
                             if (!isNaN(d)) horaStr = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
                         }
                         
-                        // Protección Anti-Crash
                         const vin = String(c.bastidor || 'NO DISPONIBLE').toUpperCase().trim();
                         const pedido = String(c.pedido || '').toUpperCase().trim();
                         const vo = String(c.entregaVO || '').toUpperCase().trim();
@@ -258,7 +258,7 @@
             }
         }
 
-        // --- CONFIGURACIÓN DEL MAPA DEL GARAJE ---
+        // --- DIBUJO DEL GARAJE ---
         const mapConfig = [
             ...Array.from({length: 20}, (_, i) => ({ id: (12 + i).toString(), col: '1 / 6', row: `${i + 1} / ${i + 2}` })),
             { id: '11', col: '10 / 16', row: '1 / 2' }, { id: '9', col: '10 / 16', row: '2 / 3' },
