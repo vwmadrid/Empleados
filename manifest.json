@@ -1,6 +1,6 @@
 {
-  "name": "VW PRO Castellana",
-  "short_name": "VW PRO",
+  "name": "VW AGENDA ENTREGAS",
+  "short_name": "VW AGENDA",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#000510",
@@ -19,3 +19,4 @@
     }
   ]
 }
+
