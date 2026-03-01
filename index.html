@@ -6,45 +6,61 @@
     <title>VW PRO | Castellana Wagen</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root { --vw-blue: #001E50; --vw-light: #00B0F0; --glass: rgba(255, 255, 255, 0.05); --glass-border: rgba(255, 255, 255, 0.1); --success: #25D366; --warning: #ff9800; --danger: #ff4444; --bg-dark: #000510; }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Segoe UI', sans-serif; }
+        :root {
+            --vw-blue: #001E50; --vw-light: #00B0F0; --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1); --success: #25D366; --warning: #ff9800; --danger: #ff4444;
+            --bg-dark: #000510;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: 'Segoe UI', Roboto, sans-serif; }
         body { margin: 0; background: var(--bg-dark); color: white; min-height: 100vh; padding-bottom: 90px; }
+        
         .nav-bottom { position: fixed; bottom: 0; left: 0; right: 0; height: 75px; background: rgba(0, 10, 30, 0.95); backdrop-filter: blur(15px); display: flex; justify-content: space-around; align-items: center; border-top: 1px solid var(--glass-border); z-index: 1000; }
         .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; opacity: 0.4; color: white; cursor: pointer; }
         .nav-item.active { opacity: 1; color: var(--vw-light); }
         .nav-item i { font-size: 20px; }
         .nav-item span { font-size: 10px; font-weight: bold; }
-        .screen { display: none; padding: 15px; }
+
+        .screen { display: none; padding: 15px; animation: fadeIn 0.3s ease; }
         .screen.active { display: block; }
-        .day-divider { background: linear-gradient(90deg, var(--vw-blue), transparent); padding: 10px 15px; margin: 20px 0 10px; border-left: 4px solid var(--vw-light); }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .day-divider { background: linear-gradient(90deg, var(--vw-blue), transparent); padding: 10px 15px; margin: 25px 0 10px 0; border-left: 4px solid var(--vw-light); position: sticky; top: 0; z-index: 10; backdrop-filter: blur(10px); }
+        .day-divider h2 { margin: 0; font-size: 14px; text-transform: uppercase; font-weight: 800; }
+
         .car-card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 15px; margin-bottom: 20px; overflow: hidden; }
         .card-header { padding: 12px 15px; background: rgba(255,255,255,0.03); display: flex; justify-content: space-between; align-items: center; }
         .delivery-hour { font-size: 24px; font-weight: 800; color: var(--vw-light); }
         .status-badge { font-size: 9px; padding: 4px 8px; border-radius: 5px; font-weight: bold; }
+
         .card-content { padding: 15px; }
         .vin-box { background: rgba(0,0,0,0.4); padding: 8px; border-radius: 8px; margin: 10px 0; border: 1px solid rgba(255,255,255,0.1); font-family: monospace; font-size: 11px; color: var(--vw-light); }
+        
         .extra-data { display: flex; gap: 10px; margin-top: 10px; }
         .data-tag { flex: 1; padding: 8px; border-radius: 8px; font-size: 10px; text-align: center; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
-        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; }
-        .btn-act { padding: 12px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-size: 11px; font-weight: bold; }
-        .map-wrapper { overflow-x: auto; padding: 10px; background: #050a15; border-radius: 12px; }
+
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; background: rgba(0,0,0,0.2); }
+        .btn-act { padding: 12px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; }
+
+        /* MAPA AVANZADO RECOMPUESTO */
+        .map-wrapper { overflow-x: auto; padding: 10px; background: #050a15; border-radius: 12px; border: 1px solid var(--glass-border); }
         .map-grid { display: grid; grid-template-columns: repeat(24, 30px); grid-template-rows: repeat(20, 35px); gap: 3px; }
-        .spot { background: var(--success); color: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; position: relative; font-size: 9px; font-weight: bold; cursor: pointer; }
+        .spot { background: var(--success); color: white; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; font-weight: bold; border: 1px solid rgba(0,0,0,0.1); overflow: hidden; }
         .spot.occupied { background: var(--danger); }
-        .spot-num { position: absolute; top: 1px; left: 2px; font-size: 7px; opacity: 0.7; }
+        .spot-num { position: absolute; top: 1px; left: 2px; font-size: 7px; opacity: 0.8; }
+        .pasillo { background: #1a253a; color: #4e5d7a; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <nav class="nav-bottom" id="main-nav" style="display: none;">
-        <div class="nav-item active" id="nav-agenda" onclick="switchTab('s-agenda')"><i class="fas fa-list"></i><span>Agenda</span></div>
+        <div class="nav-item active" id="nav-agenda" onclick="switchTab('s-agenda')"><i class="fas fa-list-ul"></i><span>Agenda</span></div>
         <div class="nav-item" id="nav-mapa" onclick="switchTab('s-mapa')"><i class="fas fa-warehouse"></i><span>Garaje</span></div>
     </nav>
 
     <section id="s-login" class="screen active" style="padding-top: 15vh; text-align: center;">
         <img src="https://upload.wikimedia.org/wikipedia/commons/6/6d/Volkswagen_logo_2019.svg" width="60" style="filter: invert(1);">
-        <h2>VW PRO</h2>
-        <button onclick="iniciar('MANUEL')" style="width:80%; padding:20px; border-radius:15px; background:var(--vw-blue); color:white; margin-bottom:15px; font-weight:bold;">MANUEL</button>
+        <h2 style="font-weight: 200; margin: 30px 0;">Castellana Wagen <b style="color:var(--vw-light)">PRO</b></h2>
+        <button onclick="iniciar('MANUEL')" style="width:80%; padding:20px; border-radius:15px; background:var(--vw-blue); color:white; border:1px solid var(--vw-light); font-weight:bold; margin-bottom:15px;">MANUEL</button>
         <button onclick="iniciar('ALEJANDRO')" style="width:80%; padding:20px; border-radius:15px; background:transparent; color:white; border:1px solid #444; font-weight:bold;">ALEJANDRO</button>
     </section>
 
@@ -53,13 +69,16 @@
     </section>
 
     <section id="s-mapa" class="screen">
-        <div class="map-wrapper"><div class="map-grid" id="parking-grid"></div></div>
+        <h2 style="font-size:18px; margin-bottom:10px;">Plano Garaje</h2>
+        <div class="map-wrapper">
+            <div class="map-grid" id="parking-grid"></div>
+        </div>
     </section>
 
     <script>
         const API_URL = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         let agente = "";
-        let parking = JSON.parse(localStorage.getItem('parking')) || {};
+        let parkingData = JSON.parse(localStorage.getItem('parking_pro')) || {};
 
         function iniciar(n) {
             agente = n;
@@ -79,11 +98,11 @@
 
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
-            lista.innerHTML = 'Cargando...';
+            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando entregas...</p>';
             try {
-                // ESTA LÍNEA ES LA QUE NO SE DEBE TOCAR:
-                const r = await fetch(API_URL + "?action=getAgenda&agente=" + agente);
-                const datos = await r.json();
+                // USAMOS EL MÉTODO DE CONEXIÓN QUE FUNCIONA CON MANUEL
+                const res = await fetch(API_URL + "?action=getAgenda&agente=" + agente);
+                const datos = await res.json();
                 
                 lista.innerHTML = "";
                 datos.forEach(c => {
@@ -94,39 +113,57 @@
                                 <span class="status-badge" style="background:${c.pedido === 'SÍ' ? '#004a99' : '#444'}">PEDIDO: ${c.pedido}</span>
                             </div>
                             <div class="card-content">
-                                <div>${c.modelo} | <b>${c.matricula}</b></div>
+                                <div style="font-size:16px; margin-bottom:5px;">${c.modelo} - <b>${c.matricula}</b></div>
                                 <div class="vin-box">${c.bastidor}</div>
                                 <div class="extra-data">
-                                    <div class="data-tag">VO: ${c.entregaVO}</div>
+                                    <div class="data-tag" style="color:${c.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}">VO: ${c.entregaVO}</div>
                                 </div>
                             </div>
                             <div class="actions">
-                                <a href="tel:${c.telefono}" class="btn-act" style="background:var(--vw-blue)">LLAMAR</a>
-                                <a href="https://wa.me/34${c.telefono}" class="btn-act" style="background:#25D366">WHATSAPP</a>
+                                <a href="tel:${c.telefono}" class="btn-act" style="background:var(--vw-blue); border:1px solid var(--vw-light)"><i class="fas fa-phone"></i> LLAMAR</a>
+                                <a href="https://wa.me/34${c.telefono}" class="btn-act" style="background:#25D366"><i class="fab fa-whatsapp"></i> WHATSAPP</a>
                             </div>
                         </div>`;
                 });
             } catch (e) {
-                lista.innerHTML = "Error de conexión";
+                lista.innerHTML = "Error de conexión con el Excel";
             }
         }
 
+        // CONFIGURACIÓN REAL DEL GARAJE (GRID 24x20)
+        const mapConfig = [
+            ...Array.from({length: 20}, (_, i) => ({ id: (12 + i).toString(), col: '1 / 6', row: `${i + 1} / ${i + 2}` })),
+            { id: '11', col: '10 / 16', row: '1 / 2' }, { id: '9', col: '10 / 16', row: '2 / 3' },
+            { id: '8', col: '10 / 16', row: '3 / 4' }, { id: '7', col: '10 / 16', row: '4 / 5' },
+            { id: '6', col: '10 / 16', row: '5 / 6' }, { id: '10', col: '16 / 22', row: '1 / 2' },
+            { id: '5', col: '16 / 22', row: '5 / 6' },
+            ...Array.from({length: 9}, (_, i) => ({ id: (50 - i).toString(), col: '10 / 16', row: `${7 + i} / ${8 + i}` })),
+            { id: '4', col: '22 / 25', row: '7 / 9' }, { id: '3', col: '22 / 25', row: '9 / 11' },
+            { id: '2', col: '22 / 25', row: '11 / 13' }, { id: '1', col: '22 / 25', row: '13 / 15' },
+            { id: '41', col: '8 / 10', row: '17 / 19' }, { id: '40', col: '10 / 13', row: '17 / 19' },
+            { id: '39', col: '13 / 16', row: '17 / 19' }, { id: '38', col: '16 / 19', row: '17 / 19' },
+            { id: '37', col: '19 / 22', row: '17 / 19' }, { id: '32', col: '8 / 10', row: '19 / 21' },
+            { id: '33', col: '10 / 13', row: '19 / 21' }, { id: '34', col: '13 / 16', row: '19 / 21' },
+            { id: '35', col: '16 / 19', row: '19 / 21' }, { id: '36', col: '19 / 22', row: '19 / 21' }
+        ];
+
         function renderMap() {
             const grid = document.getElementById('parking-grid');
-            grid.innerHTML = "";
-            for(let i=1; i<=50; i++) {
-                const ocupado = parking[i];
+            grid.innerHTML = `<div class="pasillo" style="grid-column:6/10; grid-row:1/21; writing-mode: vertical-rl;">PASILLO CENTRAL</div>`;
+            mapConfig.forEach(c => {
+                const ocupado = parkingData[c.id];
                 const div = document.createElement('div');
                 div.className = 'spot ' + (ocupado ? 'occupied' : '');
-                div.innerHTML = `<span class="spot-num">${i}</span>${ocupado ? 'Ocupado' : ''}`;
+                div.style.gridColumn = c.col; div.style.gridRow = c.row;
+                div.innerHTML = `<span class="spot-num">${c.id}</span><div style="font-size:5px">${ocupado ? ocupado.slice(-6) : ''}</div>`;
                 div.onclick = () => {
-                    if(ocupado) { if(confirm("Liberar?")) delete parking[i]; }
-                    else { const v = prompt("Bastidor:"); if(v) parking[i] = v; }
-                    localStorage.setItem('parking', JSON.stringify(parking));
+                    if(ocupado) { if(confirm("Liberar plaza " + c.id + "?")) delete parkingData[c.id]; }
+                    else { const v = prompt("Bastidor:"); if(v) parkingData[c.id] = v; }
+                    localStorage.setItem('parking_pro', JSON.stringify(parkingData));
                     renderMap();
                 };
                 grid.appendChild(div);
-            }
+            });
         }
     </script>
 </body>
