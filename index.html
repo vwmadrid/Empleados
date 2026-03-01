@@ -37,22 +37,9 @@
         .tag-blue { background: rgba(0, 176, 240, 0.1); color: var(--vw-light); border-color: var(--vw-light); cursor: pointer; }
         .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; background: rgba(0,0,0,0.2); }
         .btn-act { padding: 12px; border-radius: 10px; text-align: center; text-decoration: none; color: white; font-size: 11px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .map-wrapper { overflow-x: auto; padding: 10px; background: #050a15; border-radius: 12px; border: 1px solid var(--glass-border); }
-        .map-grid { display: grid; grid-template-columns: repeat(24, 30px); grid-template-rows: repeat(20, 35px); gap: 3px; }
-        .spot { background: var(--success); color: white; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; font-weight: bold; border: 1px solid rgba(0,0,0,0.1); overflow: hidden; text-align: center; line-height: 1; }
-        .spot.occupied { background: var(--danger); }
-        .spot-vin-text { font-size: 5px; word-break: break-all; padding: 0 1px; margin-top: 4px; font-family: monospace; }
-        .spot-num { position: absolute; top: 1px; left: 2px; font-size: 7px; opacity: 0.8; color: #fff; }
-        .pasillo { background: #1a253a; color: #4e5d7a; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: bold; text-align: center; }
-        #auto-assign-bar { position: fixed; top: 0; left: 0; right: 0; background: var(--vw-light); color: var(--vw-blue); padding: 12px; text-align: center; font-weight: bold; font-size: 12px; z-index: 2000; display: none; }
     </style>
 </head>
 <body>
-
-    <div id="auto-assign-bar">
-        ASIGNANDO VIN: <span id="target-vin"></span> 
-        <button onclick="cancelAssign()" style="background:var(--vw-blue); color:white; border:none; padding:4px 10px; border-radius:5px; margin-left:10px;">X</button>
-    </div>
 
     <nav class="nav-bottom" id="main-nav" style="display: none;">
         <div class="nav-item active" id="nav-agenda" onclick="switchTab('s-agenda')">
@@ -71,35 +58,26 @@
     </section>
 
     <section id="s-agenda" class="screen">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h1 id="user-title" style="font-size:18px;">ENTREGAS</h1>
-            <i class="fas fa-sync-alt" onclick="cargarAgenda()" style="padding:10px;"></i>
-        </div>
         <div id="contenedor-agenda"></div>
     </section>
 
     <section id="s-mapa" class="screen">
         <h2 style="font-size:18px; margin-bottom:10px;">Plano Garaje</h2>
-        <input type="text" id="busc-map" placeholder="Buscar bastidor..." onkeyup="buscarEnMapa()" style="width:100%; padding:12px; border-radius:10px; background:var(--glass); border:1px solid var(--glass-border); color:white; margin-bottom:15px;">
-        <div class="map-wrapper">
-            <div class="map-grid" id="parking-grid"></div>
-        </div>
+        <div style="text-align:center; padding:20px; color:gray;">Cargando mapa...</div>
     </section>
 
     <script>
+        // *** IMPORTANTE: USA TU URL DE SIEMPRE AQUÍ ***
         const API_URL = "https://script.google.com/macros/s/AKfycbz-wRoC-N2bp2kvy5OUwp9qBcKJq3JT3r1vFuobX-7TwnvHXkGQapbc6BMhfU166HXQ/exec";
         
         let agente = "";
-        let parkingData = JSON.parse(localStorage.getItem('parkingData')) || {};
-        let pendingVIN = null;
 
         function iniciar(n) {
-            agente = n.trim().toUpperCase();
+            agente = n;
             document.getElementById('s-login').classList.remove('active');
             document.getElementById('s-agenda').classList.add('active');
             document.getElementById('main-nav').style.display = 'flex';
             cargarAgenda();
-            renderMap();
         }
 
         function switchTab(id) {
@@ -107,148 +85,43 @@
             document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
             document.getElementById(id).classList.add('active');
             document.getElementById('nav-' + id.split('-')[1]).classList.add('active');
-            window.scrollTo(0,0);
-        }
-
-        function startAutoAssign(vin) {
-            if(!vin || vin === 'NO DISPONIBLE') { alert("Sin bastidor"); return; }
-            pendingVIN = vin.toUpperCase().trim();
-            document.getElementById('target-vin').innerText = pendingVIN;
-            document.getElementById('auto-assign-bar').style.display = 'block';
-            switchTab('s-mapa');
-        }
-
-        function cancelAssign() {
-            pendingVIN = null;
-            document.getElementById('auto-assign-bar').style.display = 'none';
         }
 
         async function cargarAgenda() {
             const lista = document.getElementById('contenedor-agenda');
-            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Sincronizando con Google...</p>';
+            lista.innerHTML = '<p style="text-align:center; padding:40px; opacity:0.5;">Cargando entregas de ' + agente + '...</p>';
             
             try {
-                // CAMBIO CLAVE: Pedimos todos los datos y filtramos aquí
-                const r = await fetch(`${API_URL}?action=getAgenda`);
-                const todosLosDatos = await r.json();
+                // VOLVEMOS AL SISTEMA DE ENVÍO POR PARÁMETRO QUE USABA TU SCRIPT ORIGINAL
+                const r = await fetch(`${API_URL}?action=getAgenda&agente=${agente}`);
+                const datos = await r.json();
                 
-                // Filtrado manual por nombre (ignorando mayúsculas y espacios)
-                const datos = todosLosDatos.filter(item => {
-                    return item.entregador && item.entregador.toString().toUpperCase().trim() === agente;
-                });
-                
-                if (!datos || datos.length === 0) {
-                    lista.innerHTML = `<p style="text-align:center; padding:40px; opacity:0.6;">No hay entregas asignadas a ${agente} hoy.</p>`;
+                if (datos.length === 0) {
+                    lista.innerHTML = '<p style="text-align:center; padding:40px;">No hay entregas para ' + agente + '</p>';
                     return;
                 }
 
-                const grupos = {};
-                datos.forEach(item => {
-                    const f = new Date(item.fechaHora).toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: 'long' });
-                    if (!grupos[f]) grupos[f] = [];
-                    grupos[f].push(item);
-                });
-
                 lista.innerHTML = "";
-                for (const dia in grupos) {
-                    lista.innerHTML += `<div class="day-divider"><h2>${dia}</h2></div>`;
-                    grupos[dia].forEach(coche => {
-                        const hora = new Date(coche.fechaHora).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-                        const tel = String(coche.telefono || "").replace(/\s/g, '');
-                        const vin = (coche.bastidor || 'NO DISPONIBLE').toUpperCase().trim();
-                        let plazaAsignada = null;
-                        for(let id in parkingData) { if(parkingData[id].vin === vin) plazaAsignada = id; }
-
-                        lista.innerHTML += `
-                            <div class="car-card">
-                                <div class="card-header">
-                                    <span class="delivery-hour">${hora}</span>
-                                    <span class="status-badge ${coche.pedido === 'SÍ' ? 'pedido-si' : 'pedido-no'}">${coche.pedido === 'SÍ' ? 'PEDIDO' : 'NO PEDIDO'}</span>
-                                </div>
-                                <div class="card-content">
-                                    <div style="font-size:18px; font-weight:bold; margin-bottom:10px;">${coche.cliente}</div>
-                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                                        <div><div style="font-size:9px; opacity:0.5;">MODELO</div><div style="font-size:13px;">${coche.modelo}</div></div>
-                                        <div><div style="font-size:9px; opacity:0.5;">MATRÍCULA</div><div style="font-size:13px; font-weight:bold;">${coche.matricula}</div></div>
-                                    </div>
-                                    <div class="vin-box">
-                                        <div style="font-size:9px; opacity:0.5;">BASTIDOR COMPLETO</div>
-                                        <div class="vin-text">${vin}</div>
-                                    </div>
-                                    <div class="extra-data">
-                                        <div class="data-tag" style="color:${coche.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}; border-color:${coche.entregaVO === 'SÍ' ? 'var(--warning)' : 'var(--success)'}">VO: ${coche.entregaVO === 'SÍ' ? 'SÍ' : 'NO'}</div>
-                                        <div class="data-tag tag-blue" onclick="startAutoAssign('${vin}')">
-                                            <i class="fas fa-map-marker-alt"></i> ${plazaAsignada ? 'PLAZA ' + plazaAsignada : 'ASIGNAR'}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="actions">
-                                    <a href="https://wa.me/34${tel}" class="btn-act" style="background:#25D366"><i class="fab fa-whatsapp"></i> WA</a>
-                                    <a href="tel:${tel}" class="btn-act" style="background:var(--vw-blue); border:1px solid var(--vw-light)"><i class="fas fa-phone"></i> LLAMAR</a>
-                                </div>
-                            </div>`;
-                    });
-                }
+                datos.forEach(coche => {
+                    lista.innerHTML += `
+                        <div class="car-card">
+                            <div class="card-header">
+                                <span class="delivery-hour">${coche.cliente}</span>
+                            </div>
+                            <div class="card-content">
+                                <div><b>Modelo:</b> ${coche.modelo}</div>
+                                <div><b>Matrícula:</b> ${coche.matricula}</div>
+                                <div class="vin-box">${coche.bastidor}</div>
+                            </div>
+                            <div class="actions">
+                                <a href="tel:${coche.telefono}" class="btn-act" style="background:var(--vw-blue)">LLAMAR</a>
+                                <a href="https://wa.me/34${coche.telefono}" class="btn-act" style="background:#25D366">WHATSAPP</a>
+                            </div>
+                        </div>`;
+                });
             } catch (e) {
-                console.error(e);
-                lista.innerHTML = '<p style="color:red; text-align:center; padding:20px;">Error al conectar con Google Sheets.<br>Comprueba la URL de la API.</p>';
+                lista.innerHTML = '<p style="color:red; text-align:center; padding:20px;">Error de conexion. Verifica la URL del script</p>';
             }
-        }
-
-        const mapConfig = [
-            ...Array.from({length: 20}, (_, i) => ({ id: (12 + i).toString(), col: '1 / 6', row: `${i + 1} / ${i + 2}` })),
-            { id: '11', col: '10 / 16', row: '1 / 2' }, { id: '9', col: '10 / 16', row: '2 / 3' },
-            { id: '8', col: '10 / 16', row: '3 / 4' }, { id: '7', col: '10 / 16', row: '4 / 5' },
-            { id: '6', col: '10 / 16', row: '5 / 6' }, { id: '10', col: '16 / 22', row: '1 / 2' },
-            { id: '5', col: '16 / 22', row: '5 / 6' },
-            ...Array.from({length: 9}, (_, i) => ({ id: (50 - i).toString(), col: '10 / 16', row: `${7 + i} / ${8 + i}` })),
-            { id: '4', col: '22 / 25', row: '7 / 9' }, { id: '3', col: '22 / 25', row: '9 / 11' },
-            { id: '2', col: '22 / 25', row: '11 / 13' }, { id: '1', col: '22 / 25', row: '13 / 15' },
-            { id: '41', col: '8 / 10', row: '17 / 19' }, { id: '40', col: '10 / 13', row: '17 / 19' },
-            { id: '39', col: '13 / 16', row: '17 / 19' }, { id: '38', col: '16 / 19', row: '17 / 19' },
-            { id: '37', col: '19 / 22', row: '17 / 19' }, { id: '32', col: '8 / 10', row: '19 / 21' },
-            { id: '33', col: '10 / 13', row: '19 / 21' }, { id: '34', col: '13 / 16', row: '19 / 21' },
-            { id: '35', col: '16 / 19', row: '19 / 21' }, { id: '36', col: '19 / 22', row: '19 / 21' }
-        ];
-
-        function renderMap() {
-            const grid = document.getElementById('parking-grid');
-            grid.innerHTML = `
-                <div class="pasillo" style="grid-column:6/10; grid-row:1/21; writing-mode: vertical-rl;">PASILLO CENTRAL</div>
-                <div class="pasillo" style="grid-column:16/22; grid-row:7/16; background:#121a2d;">RAMPA</div>
-            `;
-            mapConfig.forEach(c => {
-                const data = parkingData[c.id];
-                const div = document.createElement('div');
-                div.className = 'spot ' + (data ? 'occupied' : '');
-                div.id = 'plaza-' + c.id;
-                div.style.gridColumn = c.col; div.style.gridRow = c.row;
-                div.innerHTML = `<span class="spot-num">${c.id}</span><div class="spot-vin-text">${data ? data.vin : ''}</div>`;
-                div.onclick = () => {
-                    if(pendingVIN) {
-                        parkingData[c.id] = { vin: pendingVIN };
-                        cancelAssign();
-                    } else if(data) {
-                        if(confirm("Bastidor: " + data.vin + "\n¿Liberar plaza?")) delete parkingData[c.id];
-                    } else {
-                        const v = prompt("Bastidor manual:");
-                        if(v) parkingData[c.id] = { vin: v.toUpperCase().trim() };
-                    }
-                    localStorage.setItem('parkingData', JSON.stringify(parkingData));
-                    renderMap(); cargarAgenda();
-                };
-                grid.appendChild(div);
-            });
-        }
-
-        function buscarEnMapa() {
-            const b = document.getElementById('busc-map').value.toUpperCase();
-            mapConfig.forEach(c => {
-                const el = document.getElementById('plaza-' + c.id);
-                if(b && parkingData[c.id] && parkingData[c.id].vin.includes(b)) {
-                    el.style.border = "2px solid white"; el.style.boxShadow = "0 0 10px white";
-                } else { el.style.border = "1px solid rgba(0,0,0,0.1)"; el.style.boxShadow = "none"; }
-            });
         }
     </script>
 </body>
